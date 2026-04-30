@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { db } from "./firebase";
-import { ref, onValue, set, update, push, remove } from "firebase/database";
+import { ref, onValue, set, update, remove } from "firebase/database";
 
 
 // ── UTILS ─────────────────────────────────────────────────────────────────────
@@ -67,7 +67,7 @@ function calcChampPoints(pred, winner) {
 }
 
 function computeStats(participantId, matches, predictions, champPredictions, tournamentWinner) {
-  let total = 0, exact = 0, wins = 0, streak = 0, maxStreak = 0, tempStreak = 0;
+  let total = 0, exact = 0, wins = 0, maxStreak = 0, tempStreak = 0;
   let groupsPts = 0, elimPts = 0, played = 0;
   const finishedMatches = Object.values(matches || {}).filter(m => m.status === "finished").sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
 
