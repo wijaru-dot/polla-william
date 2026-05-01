@@ -181,8 +181,8 @@ const css = `
   /* STANDINGS */
   .standings-row { display: flex; align-items: center; gap: 10px; padding: 12px 12px; border-radius: 10px; margin-bottom: 6px; background: var(--card); border: 1px solid var(--border); cursor: pointer; transition: all 0.2s; }
   .standings-row:hover { border-color: var(--green-dark); }
-  .standings-row.top1 { background: linear-gradient(90deg, rgba(255,215,0,0.15), var(--card)); border-color: rgba(255,215,0,0.3); }
-  .standings-row.top2 { background: linear-gradient(90deg, rgba(192,192,192,0.12), var(--card)); border-color: rgba(192,192,192,0.2); }
+  .standings-row.top1 { background: linear-gradient(90deg, rgba(255,215,0,0.12) 0%, rgba(255,215,0,0.04) 100%); border-color: rgba(255,215,0,0.3); }
+  .standings-row.top2 { background: linear-gradient(90deg, rgba(192,192,192,0.10) 0%, rgba(192,192,192,0.03) 100%); border-color: rgba(192,192,192,0.2); }
   .rank { font-family: 'Bebas Neue', sans-serif; font-size: 22px; width: 26px; color: var(--text3); text-align: center; }
   .rank.gold { color: var(--gold); }
   .rank.silver { color: #C0C0C0; }
@@ -830,18 +830,24 @@ export default function App() {
   function togglePaidGroups(p) {
     const newPaid = !p.paidGroups;
     update(ref(db, `participants/${p.id}`), { paidGroups: newPaid, active: p.paidElim || newPaid });
-    const paidCount = participants.filter(u => u.paidGroups && u.id !== p.id).length + (newPaid ? 1 : 0);
-    const groupsTotal = paidCount * (settings.quotaGroups || 50000);
-    update(ref(db, "pools"), { groups: groupsTotal });
+    const paidGroupsCount = participants.filter(u => u.paidGroups && u.id !== p.id).length + (newPaid ? 1 : 0);
+    const paidElimCount = participants.filter(u => u.paidElim).length;
+    set(ref(db, "pools"), {
+      groups: paidGroupsCount * (settings.quotaGroups || 50000),
+      eliminations: paidElimCount * (settings.quotaElim || 50000)
+    });
     showNotif(newPaid ? "✅ Pago Grupos confirmado" : "Pago Grupos revertido");
   }
 
   function togglePaidElim(p) {
     const newPaid = !p.paidElim;
     update(ref(db, `participants/${p.id}`), { paidElim: newPaid, active: p.paidGroups || newPaid });
-    const paidCount = participants.filter(u => u.paidElim && u.id !== p.id).length + (newPaid ? 1 : 0);
-    const elimTotal = paidCount * (settings.quotaElim || 50000);
-    update(ref(db, "pools"), { eliminations: elimTotal });
+    const paidGroupsCount = participants.filter(u => u.paidGroups).length;
+    const paidElimCount = participants.filter(u => u.paidElim && u.id !== p.id).length + (newPaid ? 1 : 0);
+    set(ref(db, "pools"), {
+      groups: paidGroupsCount * (settings.quotaGroups || 50000),
+      eliminations: paidElimCount * (settings.quotaElim || 50000)
+    });
     showNotif(newPaid ? "✅ Pago Eliminatorias confirmado" : "Pago Eliminatorias revertido");
   }
 
