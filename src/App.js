@@ -144,7 +144,7 @@ const css = `
   .match-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; transition: border-color 0.2s; }
   .match-card:hover { border-color: var(--green-dark); }
   .match-teams { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-  .team-name { font-weight: 600; font-size: 14px; flex: 1; }
+  .team-name { font-weight: 700; font-size: 14px; flex: 1; color: var(--text); }
   .team-name.away { text-align: right; }
   .vs { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--text3); margin: 0 8px; }
   .match-meta { font-size: 11px; color: var(--text3); margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; }
