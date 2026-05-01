@@ -181,8 +181,8 @@ const css = `
   /* STANDINGS */
   .standings-row { display: flex; align-items: center; gap: 10px; padding: 12px 12px; border-radius: 10px; margin-bottom: 6px; background: var(--card); border: 1px solid var(--border); cursor: pointer; transition: all 0.2s; }
   .standings-row:hover { border-color: var(--green-dark); }
-  .standings-row.top1 { background: linear-gradient(90deg, rgba(255,215,0,0.12) 0%, rgba(255,215,0,0.04) 100%); border-color: rgba(255,215,0,0.3); }
-  .standings-row.top2 { background: linear-gradient(90deg, rgba(192,192,192,0.10) 0%, rgba(192,192,192,0.03) 100%); border-color: rgba(192,192,192,0.2); }
+  .standings-row.top1 { background: var(--card); border-color: rgba(255,215,0,0.3); border-left: 4px solid var(--gold); }
+  .standings-row.top2 { background: var(--card); border-color: rgba(192,192,192,0.3); border-left: 4px solid #C0C0C0; }
   .rank { font-family: 'Bebas Neue', sans-serif; font-size: 22px; width: 26px; color: var(--text3); text-align: center; }
   .rank.gold { color: var(--gold); }
   .rank.silver { color: #C0C0C0; }
@@ -694,7 +694,8 @@ export default function App() {
     const unsubs = [];
     unsubs.push(onValue(ref(db, "participants"), snap => {
       const data = snap.val() || {};
-      setParticipants(Object.values(data));
+      const parts = Object.values(data);
+      setParticipants(parts);
       setLoading(false);
     }));
     unsubs.push(onValue(ref(db, "matches"), snap => setMatches(snap.val() || {})));
@@ -704,8 +705,7 @@ export default function App() {
       const s = snap.val();
       if (s) setSettings(s);
       else {
-        // First run — initialize settings
-        set(ref(db, "settings"), { quota: 50000, currency: "COP", groupCode: genCode(), adminPassword: "admin123", tournamentWinner: "" });
+        set(ref(db, "settings"), { quotaGroups: 50000, quotaElim: 50000, currency: "COP", groupCode: genCode(), adminPassword: "admin123", tournamentWinner: "" });
       }
     }));
     unsubs.push(onValue(ref(db, "pools"), snap => { setPools(snap.val() || { groups: 0, eliminations: 0 }); }));
@@ -871,6 +871,19 @@ export default function App() {
     update(ref(db, "settings"), { groupCode: code });
     showNotif(`🔑 Nuevo código: ${code}`);
   }
+
+  // ── RECALCULATE POOLS when participants or settings change
+  useEffect(() => {
+    if (participants.length === 0) return;
+    const paidGroupsCount = participants.filter(u => u.paidGroups).length;
+    const paidElimCount = participants.filter(u => u.paidElim).length;
+    const newPools = {
+      groups: paidGroupsCount * (settings.quotaGroups || 50000),
+      eliminations: paidElimCount * (settings.quotaElim || 50000)
+    };
+    setPools(newPools);
+    set(ref(db, "pools"), newPools);
+  }, [participants, settings.quotaGroups, settings.quotaElim]);
 
   // ── STANDINGS ─────────────────────────────────────────────────────────────
   const standings = participants
