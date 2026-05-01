@@ -463,6 +463,91 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
   );
 }
 
+function EditMatch({ match, onEdit, onCorrectResult }) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ homeTeam: match.homeTeam, awayTeam: match.awayTeam, datetime: match.datetime, phase: match.phase });
+  const [resForm, setResForm] = useState({ home: match.result?.home || 0, away: match.result?.away || 0, penalties: match.result?.penalties || false, pensHome: match.result?.pensHome || 0, pensAway: match.result?.pensAway || 0 });
+  const [tab, setTab] = useState("info");
+  const isKnockout = match.phase !== "groups" && match.phase !== "test";
+
+  if (!open) return (
+    <button className="btn btn-secondary btn-sm" onClick={() => setOpen(true)}>✏️ Editar</button>
+  );
+
+  return (
+    <div style={{ marginTop: 8, background: "rgba(0,200,83,0.05)", border: "1px solid rgba(0,200,83,0.2)", borderRadius: 8, padding: 12 }}>
+      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+        <button className={"btn btn-sm " + (tab === "info" ? "btn-primary" : "btn-secondary")} onClick={() => setTab("info")}>📋 Datos</button>
+        <button className={"btn btn-sm " + (tab === "result" ? "btn-primary" : "btn-secondary")} onClick={() => setTab("result")}>⚽ Resultado</button>
+        <button className="btn btn-secondary btn-sm" style={{ marginLeft: "auto" }} onClick={() => setOpen(false)}>✕</button>
+      </div>
+
+      {tab === "info" && (
+        <div>
+          <div className="input-row">
+            <div className="input-group" style={{ flex: 1 }}>
+              <label className="input-label">Local</label>
+              <input className="input" value={form.homeTeam} onChange={e => setForm(f => ({ ...f, homeTeam: e.target.value }))} />
+            </div>
+            <div className="input-group" style={{ flex: 1 }}>
+              <label className="input-label">Visitante</label>
+              <input className="input" value={form.awayTeam} onChange={e => setForm(f => ({ ...f, awayTeam: e.target.value }))} />
+            </div>
+          </div>
+          <div className="input-row">
+            <div className="input-group" style={{ flex: 1 }}>
+              <label className="input-label">Fecha y hora</label>
+              <input className="input" type="datetime-local" value={form.datetime} onChange={e => setForm(f => ({ ...f, datetime: e.target.value }))} />
+            </div>
+            <div className="input-group" style={{ flex: 1 }}>
+              <label className="input-label">Fase</label>
+              <select className="input" value={form.phase} onChange={e => setForm(f => ({ ...f, phase: e.target.value }))}>
+                <option value="test">🧪 Prueba</option>
+                <option value="groups">Fase Grupos</option>
+                <option value="r16">Octavos</option>
+                <option value="qf">Cuartos</option>
+                <option value="sf">Semifinal</option>
+                <option value="final">Final</option>
+              </select>
+            </div>
+          </div>
+          <button className="btn btn-primary btn-full btn-sm" onClick={() => { onEdit(match.id, form); setOpen(false); }}>✅ Guardar cambios</button>
+        </div>
+      )}
+
+      {tab === "result" && (
+        <div>
+          <div style={{ fontSize: 12, color: "var(--gold)", marginBottom: 8, fontWeight: 600 }}>Corregir resultado</div>
+          <div className="score-input-row">
+            <Stepper value={resForm.home} onChange={v => setResForm(r => ({ ...r, home: v }))} />
+            <span className="score-dash">:</span>
+            <Stepper value={resForm.away} onChange={v => setResForm(r => ({ ...r, away: v }))} />
+          </div>
+          {isKnockout && resForm.home === resForm.away && (
+            <div style={{ marginTop: 8 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text2)", marginBottom: 6, cursor: "pointer" }}>
+                <input type="checkbox" checked={resForm.penalties} onChange={e => setResForm(r => ({ ...r, penalties: e.target.checked }))} />
+                ¿Hubo penales?
+              </label>
+              {resForm.penalties && (
+                <div className="score-input-row">
+                  <Stepper value={resForm.pensHome} onChange={v => setResForm(r => ({ ...r, pensHome: v }))} />
+                  <span style={{ fontSize: 11, color: "var(--text3)" }}>PEN</span>
+                  <Stepper value={resForm.pensAway} onChange={v => setResForm(r => ({ ...r, pensAway: v }))} />
+                </div>
+              )}
+            </div>
+          )}
+          <button className="btn btn-gold btn-full btn-sm" style={{ marginTop: 10 }} onClick={() => { onCorrectResult(match.id, { ...resForm, status: "finished", phase: match.phase }); setOpen(false); }}>
+            ✅ Corregir resultado
+          </button>
+          <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 6 }}>⚠️ Los puntos se recalcularán automáticamente.</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AdminSetResult({ match, onSetResult }) {
   const [res, setRes] = useState({ home: 0, away: 0, penalties: false, pensHome: 0, pensAway: 0 });
   const [open, setOpen] = useState(false);
@@ -681,6 +766,16 @@ export default function App() {
   function deleteMatch(id) {
     remove(ref(db, `matches/${id}`));
     showNotif("Partido eliminado");
+  }
+
+  function editMatch(id, changes) {
+    update(ref(db, `matches/${id}`), changes);
+    showNotif("✅ Partido actualizado");
+  }
+
+  function correctResult(matchId, res) {
+    update(ref(db, `matches/${matchId}`), { status: "finished", result: { ...res, status: "finished" } });
+    showNotif("✅ Resultado corregido");
   }
 
   function setResult(matchId, res) {
@@ -1058,19 +1153,24 @@ export default function App() {
                     {Object.values(matches).length === 0
                       ? <div className="empty"><div className="empty-icon">📋</div><div className="empty-text">No hay partidos aún</div></div>
                       : Object.values(matches).sort((a, b) => new Date(a.datetime) - new Date(b.datetime)).map(m => (
-                        <div key={m.id} className="match-card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                          <div>
-                            <div style={{ fontWeight: 600, fontSize: 13 }}>{m.homeTeam} vs {m.awayTeam}</div>
-                            <div style={{ fontSize: 11, color: "var(--text3)" }}>{fmtDate(m.datetime)} · {getPhaseLabel(m.phase)}</div>
-                            <div style={{ fontSize: 11, marginTop: 2 }}>
-                              {m.status === "finished"
-                                ? <span style={{ color: "var(--green)" }}>✅ {m.result.home}-{m.result.away}{m.result.penalties ? ` (Pen: ${m.result.pensHome}-${m.result.pensAway})` : ""}</span>
-                                : <span style={{ color: "var(--text3)" }}>⏳ Pendiente</span>}
+                        <div key={m.id} className="match-card">
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                            <div>
+                              <div style={{ fontWeight: 600, fontSize: 13 }}>{m.homeTeam} vs {m.awayTeam}</div>
+                              <div style={{ fontSize: 11, color: "var(--text3)" }}>{fmtDate(m.datetime)} · {getPhaseLabel(m.phase)}</div>
+                              <div style={{ fontSize: 11, marginTop: 2 }}>
+                                {m.status === "finished"
+                                  ? <span style={{ color: "var(--green)" }}>✅ {m.result.home}-{m.result.away}{m.result.penalties ? ` (Pen: ${m.result.pensHome}-${m.result.pensAway})` : ""}</span>
+                                  : <span style={{ color: "var(--text3)" }}>⏳ Pendiente</span>}
+                              </div>
+                            </div>
+                            <div style={{ display: "flex", gap: 4 }}>
+                              {m.status !== "finished" && (
+                                <button className="btn btn-danger btn-sm" onClick={() => deleteMatch(m.id)}>🗑</button>
+                              )}
                             </div>
                           </div>
-                          {m.status !== "finished" && (
-                            <button className="btn btn-danger btn-sm" onClick={() => deleteMatch(m.id)}>🗑</button>
-                          )}
+                          <EditMatch match={m} onEdit={editMatch} onCorrectResult={correctResult} />
                         </div>
                       ))}
                   </div>
