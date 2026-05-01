@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { db } from "./firebase";
 import { TEAM_FLAGS, WC2026_MATCHES } from "./worldcupData";
 
-import { ref, onValue, set as fbSet, update, remove } from "firebase/database";
+import { ref as dbRef, onValue, set as fbSet, update, remove } from "firebase/database";
 
 
 // ── UTILS ─────────────────────────────────────────────────────────────────────
@@ -701,28 +701,28 @@ export default function App() {
   // ── FIREBASE LISTENERS ────────────────────────────────────────────────────
   useEffect(() => {
     const unsubs = [];
-    unsubs.push(onValue(ref(db, "participants"), snap => {
+    unsubs.push(onValue(dbRef(db, "participants"), snap => {
       const data = snap.val() || {};
       const parts = Object.values(data);
       setParticipants(parts);
       setLoading(false);
     }));
-    unsubs.push(onValue(ref(db, "matches"), snap => setMatches(snap.val() || {})));
-    unsubs.push(onValue(ref(db, "predictions"), snap => setPredictions(snap.val() || {})));
-    unsubs.push(onValue(ref(db, "champPredictions"), snap => setChampPredictions(snap.val() || {})));
-    unsubs.push(onValue(ref(db, "settings"), snap => {
+    unsubs.push(onValue(dbRef(db, "matches"), snap => setMatches(snap.val() || {})));
+    unsubs.push(onValue(dbRef(db, "predictions"), snap => setPredictions(snap.val() || {})));
+    unsubs.push(onValue(dbRef(db, "champPredictions"), snap => setChampPredictions(snap.val() || {})));
+    unsubs.push(onValue(dbRef(db, "settings"), snap => {
       const s = snap.val();
       if (s) setSettings(s);
       else {
-        fbSet(ref(db, "settings"), { quotaGroups: 50000, quotaElim: 50000, currency: "COP", groupCode: genCode(), adminPassword: "admin123", tournamentWinner: "" });
+        fbSet(dbRef(db, "settings"), { quotaGroups: 50000, quotaElim: 50000, currency: "COP", groupCode: genCode(), adminPassword: "admin123", tournamentWinner: "" });
       }
     }));
-    unsubs.push(onValue(ref(db, "pools"), snap => { setPools(snap.val() || { groups: 0, eliminations: 0 }); }));
+    unsubs.push(onValue(dbRef(db, "pools"), snap => { setPools(snap.val() || { groups: 0, eliminations: 0 }); }));
 
     // Init admin if not exists
-    onValue(ref(db, "participants/admin"), snap => {
+    onValue(dbRef(db, "participants/admin"), snap => {
       if (!snap.val()) {
-        fbSet(ref(db, "participants/admin"), { id: "admin", name: "Admin", role: "admin", paid: true, active: true });
+        fbSet(dbRef(db, "participants/admin"), { id: "admin", name: "Admin", role: "admin", paid: true, active: true });
       }
     }, { onlyOnce: true });
 
@@ -737,7 +737,7 @@ export default function App() {
         const savedUser = JSON.parse(saved);
         setCurrentUser(savedUser);
         // Sync with latest Firebase data
-        onValue(ref(db, `participants/${savedUser.id}`), snap => {
+        onValue(dbRef(db, `participants/${savedUser.id}`), snap => {
           const fresh = snap.val();
           if (fresh) {
             setCurrentUser(fresh);
@@ -771,7 +771,7 @@ export default function App() {
       return;
     }
     const newUser = { id: genId(), name, role: "player", paidGroups: false, paidElim: false, active: false };
-    fbSet(ref(db, `participants/${newUser.id}`), newUser);
+    fbSet(dbRef(db, `participants/${newUser.id}`), newUser);
     setCurrentUser(newUser);
     localStorage.setItem("polla_user", JSON.stringify(newUser));
     showNotif(`¡Bienvenido, ${name}! Espera confirmación de pago.`);
@@ -789,13 +789,13 @@ export default function App() {
   // ── PREDICTIONS ───────────────────────────────────────────────────────────
   function savePrediction(matchId, pred) {
     if (!currentUser?.paidGroups && !currentUser?.paidElim && currentUser?.role !== "admin") return showNotif("⚠️ Pago pendiente", "error");
-    fbSet(ref(db, `predictions/${matchId}/${currentUser.id}`), { ...pred, userName: currentUser.name });
+    fbSet(dbRef(db, `predictions/${matchId}/${currentUser.id}`), { ...pred, userName: currentUser.name });
     showNotif("✅ Predicción guardada");
   }
 
   function saveChampPred(team) {
     if (!currentUser?.paidGroups && !currentUser?.paidElim && currentUser?.role !== "admin") return showNotif("⚠️ Pago pendiente", "error");
-    fbSet(ref(db, `champPredictions/${currentUser.id}`), { team, userName: currentUser.name });
+    fbSet(dbRef(db, `champPredictions/${currentUser.id}`), { team, userName: currentUser.name });
     showNotif("🏆 Predicción de campeón guardada");
   }
 
@@ -803,7 +803,7 @@ export default function App() {
   function addMatch() {
     if (!newMatch.homeTeam || !newMatch.awayTeam || !newMatch.datetime) return showNotif("Completa todos los campos", "error");
     const id = genId();
-    fbSet(ref(db, `matches/${id}`), { ...newMatch, id, status: "upcoming", result: null });
+    fbSet(dbRef(db, `matches/${id}`), { ...newMatch, id, status: "upcoming", result: null });
     setNewMatch({ homeTeam: "", awayTeam: "", datetime: "", phase: "test" });
     showNotif("⚽ Partido agregado");
   }
@@ -813,7 +813,7 @@ export default function App() {
     let added = 0;
     WC2026_MATCHES.forEach(m => {
       if (!existing.find(e => e.id === m.id)) {
-        fbSet(ref(db, `matches/${m.id}`), m);
+        fbSet(dbRef(db, `matches/${m.id}`), m);
         added++;
       }
     });
@@ -828,33 +828,33 @@ export default function App() {
       return matchDate === dateStr && !m.enabled;
     });
     dayMatches.forEach(m => {
-      update(ref(db, `matches/${m.id}`), { enabled: true });
+      update(dbRef(db, `matches/${m.id}`), { enabled: true });
     });
     showNotif(`✅ ${dayMatches.length} partidos habilitados para ${dateStr}`);
   }
 
   function toggleMatchEnabled(matchId, currentState) {
-    update(ref(db, `matches/${matchId}`), { enabled: !currentState });
+    update(dbRef(db, `matches/${matchId}`), { enabled: !currentState });
     showNotif(!currentState ? "✅ Partido habilitado" : "⏸ Partido ocultado");
   }
 
   function deleteMatch(id) {
-    remove(ref(db, `matches/${id}`));
+    remove(dbRef(db, `matches/${id}`));
     showNotif("Partido eliminado");
   }
 
   function editMatch(id, changes) {
-    update(ref(db, `matches/${id}`), changes);
+    update(dbRef(db, `matches/${id}`), changes);
     showNotif("✅ Partido actualizado");
   }
 
   function correctResult(matchId, res) {
-    update(ref(db, `matches/${matchId}`), { status: "finished", result: { ...res, status: "finished" } });
+    update(dbRef(db, `matches/${matchId}`), { status: "finished", result: { ...res, status: "finished" } });
     showNotif("✅ Resultado corregido");
   }
 
   function setResult(matchId, res) {
-    update(ref(db, `matches/${matchId}`), { status: "finished", result: res });
+    update(dbRef(db, `matches/${matchId}`), { status: "finished", result: res });
     showNotif("✅ Resultado ingresado");
   }
 
@@ -862,16 +862,16 @@ export default function App() {
 
 
   function toggleActive(p) {
-    update(ref(db, `participants/${p.id}`), { active: !p.active });
+    update(dbRef(db, `participants/${p.id}`), { active: !p.active });
     showNotif(p.active ? "⏸ Participante suspendido" : "▶️ Participante reactivado");
   }
 
   function togglePaidGroups(p) {
     const newPaid = !p.paidGroups;
-    update(ref(db, `participants/${p.id}`), { paidGroups: newPaid, active: p.paidElim || newPaid });
+    update(dbRef(db, `participants/${p.id}`), { paidGroups: newPaid, active: p.paidElim || newPaid });
     const paidGroupsCount = participants.filter(u => u.paidGroups && u.id !== p.id).length + (newPaid ? 1 : 0);
     const paidElimCount = participants.filter(u => u.paidElim).length;
-    fbSet(ref(db, "pools"), {
+    fbSet(dbRef(db, "pools"), {
       groups: paidGroupsCount * (settings.quotaGroups || 50000),
       eliminations: paidElimCount * (settings.quotaElim || 50000)
     });
@@ -880,10 +880,10 @@ export default function App() {
 
   function togglePaidElim(p) {
     const newPaid = !p.paidElim;
-    update(ref(db, `participants/${p.id}`), { paidElim: newPaid, active: p.paidGroups || newPaid });
+    update(dbRef(db, `participants/${p.id}`), { paidElim: newPaid, active: p.paidGroups || newPaid });
     const paidGroupsCount = participants.filter(u => u.paidGroups).length;
     const paidElimCount = participants.filter(u => u.paidElim && u.id !== p.id).length + (newPaid ? 1 : 0);
-    fbSet(ref(db, "pools"), {
+    fbSet(dbRef(db, "pools"), {
       groups: paidGroupsCount * (settings.quotaGroups || 50000),
       eliminations: paidElimCount * (settings.quotaElim || 50000)
     });
@@ -892,36 +892,39 @@ export default function App() {
 
   function clearTestParticipants() {
     participants.filter(p => p.role !== "admin").forEach(p => {
-      remove(ref(db, `participants/${p.id}`));
+      remove(dbRef(db, `participants/${p.id}`));
     });
     showNotif("🧹 Participantes de prueba eliminados");
   }
 
   function clearTestMatches() {
     Object.values(matches).filter(m => m.phase === "test").forEach(m => {
-      remove(ref(db, `matches/${m.id}`));
-      remove(ref(db, `predictions/${m.id}`));
+      remove(dbRef(db, `matches/${m.id}`));
+      remove(dbRef(db, `predictions/${m.id}`));
     });
     showNotif("🧹 Partidos de prueba eliminados");
   }
 
   function regenerateCode() {
     const code = genCode();
-    update(ref(db, "settings"), { groupCode: code });
+    update(dbRef(db, "settings"), { groupCode: code });
     showNotif(`🔑 Nuevo código: ${code}`);
   }
 
   // ── RECALCULATE POOLS when participants or settings change
   useEffect(() => {
-    if (participants.length === 0) return;
-    const paidGroupsCount = participants.filter(u => u.paidGroups).length;
-    const paidElimCount = participants.filter(u => u.paidElim).length;
-    const newPools = {
-      groups: paidGroupsCount * (settings.quotaGroups || 50000),
-      eliminations: paidElimCount * (settings.quotaElim || 50000)
-    };
-    setPools(newPools);
-    fbSet(ref(db, "pools"), newPools);
+    if (!participants || participants.length === 0) return;
+    try {
+      const paidGroupsCount = participants.filter(u => u && u.paidGroups).length;
+      const paidElimCount = participants.filter(u => u && u.paidElim).length;
+      const newPools = {
+        groups: paidGroupsCount * (settings.quotaGroups || 50000),
+        eliminations: paidElimCount * (settings.quotaElim || 50000)
+      };
+      setPools(newPools);
+    } catch(e) {
+      console.error("Pool calc error:", e);
+    }
   }, [participants, settings.quotaGroups, settings.quotaElim]);
 
   // ── STANDINGS ─────────────────────────────────────────────────────────────
@@ -1154,18 +1157,18 @@ export default function App() {
                       <label className="input-label">Cuota Grupos</label>
                       <input className="input" type="number" placeholder="Ej: 50000"
                         defaultValue={settings.quotaGroups || 50000}
-                        onBlur={e => { const v = parseInt(e.target.value); if(!isNaN(v)) update(ref(db, "settings"), { quotaGroups: v }); }} />
+                        onBlur={e => { const v = parseInt(e.target.value); if(!isNaN(v)) update(dbRef(db, "settings"), { quotaGroups: v }); }} />
                     </div>
                     <div className="input-group" style={{ flex: 1 }}>
                       <label className="input-label">Cuota Eliminatorias</label>
                       <input className="input" type="number" placeholder="Ej: 50000"
                         defaultValue={settings.quotaElim || 50000}
-                        onBlur={e => { const v = parseInt(e.target.value); if(!isNaN(v)) update(ref(db, "settings"), { quotaElim: v }); }} />
+                        onBlur={e => { const v = parseInt(e.target.value); if(!isNaN(v)) update(dbRef(db, "settings"), { quotaElim: v }); }} />
                     </div>
                   </div>
                   <div className="input-group">
                     <label className="input-label">Moneda</label>
-                    <select className="input" value={settings.currency} onChange={e => update(ref(db, "settings"), { currency: e.target.value })}>
+                    <select className="input" value={settings.currency} onChange={e => update(dbRef(db, "settings"), { currency: e.target.value })}>
                       <option>COP</option><option>CAD</option><option>USD</option>
                     </select>
                   </div>
@@ -1389,7 +1392,7 @@ export default function App() {
                       <div className="card-title">🏆 La Polla del Campeón</div>
                       <div className="input-group">
                         <label className="input-label">Equipo campeón (ingresar al finalizar el torneo)</label>
-                        <input className="input" placeholder="Ej: Colombia 🇨🇴" value={settings.tournamentWinner || ""} onChange={e => update(ref(db, "settings"), { tournamentWinner: e.target.value })} />
+                        <input className="input" placeholder="Ej: Colombia 🇨🇴" value={settings.tournamentWinner || ""} onChange={e => update(dbRef(db, "settings"), { tournamentWinner: e.target.value })} />
                       </div>
                       <div style={{ fontSize: 12, color: "var(--text3)" }}>Al ingresar el campeón se calculan automáticamente los +10 pts.</div>
                     </div>
