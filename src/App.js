@@ -141,7 +141,7 @@ const css = `
   .card-title { font-weight: 700; font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
 
   /* MATCH CARD */
-  .match-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; transition: border-color 0.2s; }
+  .match-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; transition: border-color 0.2s; color: var(--text); }
   .match-card:hover { border-color: var(--green-dark); }
   .match-teams { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
   .team-name { font-weight: 700; font-size: 14px; flex: 1; color: var(--text); }
@@ -179,16 +179,16 @@ const css = `
   .reveal-score { font-family: 'Bebas Neue', sans-serif; font-size: 16px; color: var(--text); display: flex; align-items: center; justify-content: space-between; }
 
   /* STANDINGS */
-  .standings-row { display: flex; align-items: center; gap: 10px; padding: 12px 12px; border-radius: 10px; margin-bottom: 6px; background: var(--card2); border: 1px solid var(--border); cursor: pointer; transition: all 0.2s; }
+  .standings-row { display: flex; align-items: center; gap: 10px; padding: 12px 12px; border-radius: 10px; margin-bottom: 6px; background: var(--card); border: 1px solid var(--border); cursor: pointer; transition: all 0.2s; }
   .standings-row:hover { border-color: var(--green-dark); }
-  .standings-row.top1 { background: linear-gradient(90deg, rgba(255,215,0,0.1), transparent); border-color: rgba(255,215,0,0.3); }
-  .standings-row.top2 { background: linear-gradient(90deg, rgba(192,192,192,0.08), transparent); border-color: rgba(192,192,192,0.2); }
+  .standings-row.top1 { background: linear-gradient(90deg, rgba(255,215,0,0.15), var(--card)); border-color: rgba(255,215,0,0.3); }
+  .standings-row.top2 { background: linear-gradient(90deg, rgba(192,192,192,0.12), var(--card)); border-color: rgba(192,192,192,0.2); }
   .rank { font-family: 'Bebas Neue', sans-serif; font-size: 22px; width: 26px; color: var(--text3); text-align: center; }
   .rank.gold { color: var(--gold); }
   .rank.silver { color: #C0C0C0; }
   .rank.bronze { color: #CD7F32; }
-  .standing-name { font-weight: 600; font-size: 14px; }
-  .standing-stats { font-size: 10px; color: var(--text3); margin-top: 2px; }
+  .standing-name { font-weight: 700; font-size: 14px; color: var(--text); }
+  .standing-stats { font-size: 10px; color: var(--text2); margin-top: 2px; }
   .standing-pts { font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: var(--green); }
   .unpaid-badge { font-size: 10px; background: rgba(255,23,68,0.15); color: var(--red); border: 1px solid rgba(255,23,68,0.3); border-radius: 4px; padding: 2px 5px; }
 
@@ -708,7 +708,7 @@ export default function App() {
         set(ref(db, "settings"), { quota: 50000, currency: "COP", groupCode: genCode(), adminPassword: "admin123", tournamentWinner: "" });
       }
     }));
-    unsubs.push(onValue(ref(db, "pools"), snap => { if (snap.val()) setPools(snap.val()); }));
+    unsubs.push(onValue(ref(db, "pools"), snap => { setPools(snap.val() || { groups: 0, eliminations: 0 }); }));
 
     // Init admin if not exists
     onValue(ref(db, "participants/admin"), snap => {
@@ -1057,7 +1057,7 @@ export default function App() {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div className="standing-name" style={{ display: "flex", alignItems: "center", gap: 4 }}>
                             {p.name}
-                            {!p.paid && <span className="unpaid-badge">Sin pago</span>}
+                            {!p.paidGroups && !p.paidElim && <span className="unpaid-badge">Sin pago</span>}
                           </div>
                           <div className="standing-stats">🎯 {p.exact} exactos · ✅ {p.pct}% · 🔥 {p.streak} racha</div>
                         </div>
@@ -1218,7 +1218,7 @@ export default function App() {
                         <div key={m.id} className="match-card">
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                             <div>
-                              <div style={{ fontWeight: 600, fontSize: 13 }}>{m.homeTeam} vs {m.awayTeam}</div>
+                              <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)" }}>{m.homeTeam} vs {m.awayTeam}</div>
                               <div style={{ fontSize: 11, color: "var(--text3)" }}>{fmtDate(m.datetime)} · {getPhaseLabel(m.phase)}</div>
                               <div style={{ fontSize: 11, marginTop: 2 }}>
                                 {m.status === "finished"
