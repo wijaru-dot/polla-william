@@ -928,15 +928,16 @@ export default function App() {
   }, [participants, settings.quotaGroups, settings.quotaElim]);
 
   // ── STANDINGS ─────────────────────────────────────────────────────────────
+  const isAdmin = currentUser?.role === "admin";
+  const isPlayer = currentUser?.role === "player";
+
   const standings = participants
-    .filter(p => p.role !== "admin" && (p.active || p.paid))
+    .filter(p => p.role !== "admin" && (p.active || p.paidGroups || p.paidElim))
     .map(p => ({ ...p, ...computeStats(p.id, matches, predictions, champPredictions, settings.tournamentWinner) }))
     .sort((a, b) => b.total - a.total || b.exact - a.exact || b.pct - a.pct);
 
   const upcomingMatches = Object.values(matches).filter(m => m.status !== "finished" && (m.enabled || m.phase === "test" || isAdmin)).sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
   const finishedMatches = Object.values(matches).filter(m => m.status === "finished" && (m.enabled || m.phase === "test" || isAdmin)).sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
-  const isAdmin = currentUser?.role === "admin";
-  const isPlayer = currentUser?.role === "player";
 
   // ── LOADING ───────────────────────────────────────────────────────────────
   if (loading) return (
