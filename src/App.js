@@ -587,6 +587,43 @@ function AdminSetResult({ match, onSetResult }) {
   );
 }
 
+// ── PROFILE MENU ─────────────────────────────────────────────────────────────
+function ProfileMenu({ user, onLogout, onClose }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 300 }} onClick={onClose}>
+      <div style={{ position: "absolute", top: 64, right: 12, background: "var(--card)", border: "1px solid var(--border)", borderRadius: 14, padding: 16, minWidth: 200, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid var(--border)" }}>
+          <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--gold)", color: "var(--green-deep)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 18, overflow: "hidden" }}>
+            {user.photoURL ? <img src={user.photoURL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : user.name[0].toUpperCase()}
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>{user.name}</div>
+            <div style={{ fontSize: 11, color: "var(--text3)" }}>{user.role === "admin" ? "⚙️ Administrador" : "⚽ Jugador"}</div>
+          </div>
+        </div>
+        {user.role !== "admin" && (
+          <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid var(--border)" }}>
+            <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 8, fontWeight: 600, letterSpacing: 0.5 }}>ESTADO DE PAGO</div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <div style={{ flex: 1, background: "var(--bg2)", borderRadius: 8, padding: "6px 8px", textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "var(--text3)", marginBottom: 2 }}>⚽ Grupos</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: user.paidGroups ? "var(--green)" : "var(--red)" }}>{user.paidGroups ? "✅ Pagado" : "⏳ Pendiente"}</div>
+              </div>
+              <div style={{ flex: 1, background: "var(--bg2)", borderRadius: 8, padding: "6px 8px", textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "var(--text3)", marginBottom: 2 }}>🏆 Elim.</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: user.paidElim ? "var(--green)" : "var(--red)" }}>{user.paidElim ? "✅ Pagado" : "⏳ Pendiente"}</div>
+              </div>
+            </div>
+          </div>
+        )}
+        <button className="btn btn-danger btn-full btn-sm" onClick={() => { onLogout(); onClose(); }}>
+          🚪 Cerrar sesión
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── CHAMPION COMPONENT ────────────────────────────────────────────────────────
 function ChampPrediction({ userId, userName, champPredictions, tournamentWinner, onSave, matches }) {
   const [team, setTeam] = useState(champPredictions?.[userId]?.team || "");
@@ -636,6 +673,7 @@ export default function App() {
   const [standTab, setStandTab] = useState("total");
   const [notif, setNotif] = useState(null);
   const [selectedParticipant, setSelectedParticipant] = useState(null);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [newMatch, setNewMatch] = useState({ homeTeam: "", awayTeam: "", datetime: "", phase: "test" });
   const fileInputRef = useRef();
 
@@ -903,6 +941,9 @@ export default function App() {
       <style>{css}</style>
       <div className={darkMode ? "" : "light"}>
         {notif && <div className="notif">{notif.msg}</div>}
+        {showProfileMenu && (
+          <ProfileMenu user={currentUser} onLogout={handleLogout} onClose={() => setShowProfileMenu(false)} />
+        )}
         {selectedParticipant && (
           <StatsModal
             participant={selectedParticipant}
@@ -922,17 +963,9 @@ export default function App() {
             </div>
             <div className="header-right">
               <button className="dark-toggle" onClick={() => setDarkMode(d => !d)}>{darkMode ? "☀️" : "🌙"}</button>
-              {isPlayer && (
-                <>
-                  <input type="file" accept="image/*" ref={fileInputRef} style={{ display: "none" }} onChange={e => handlePhotoUpload(e.target.files[0])} />
-                  <div className="avatar" onClick={() => fileInputRef.current?.click()} title="Cambiar foto">
-                    {currentUser.photoURL ? <img src={currentUser.photoURL} alt="" /> : currentUser.name[0].toUpperCase()}
-                  </div>
-                </>
-              )}
-              {isAdmin && (
-                <div className="avatar" onClick={handleLogout} title="Cerrar sesión" style={{ background: "var(--gold-dark)" }}>⚙️</div>
-              )}
+              <div className="avatar" onClick={() => setShowProfileMenu(true)} title="Mi perfil">
+                {currentUser.photoURL ? <img src={currentUser.photoURL} alt="" /> : currentUser.name[0].toUpperCase()}
+              </div>
             </div>
           </header>
 
@@ -1053,11 +1086,15 @@ export default function App() {
                   <div className="input-row">
                     <div className="input-group" style={{ flex: 1 }}>
                       <label className="input-label">Cuota Grupos</label>
-                      <input className="input" type="number" value={settings.quotaGroups || 50000} onChange={e => update(ref(db, "settings"), { quotaGroups: parseInt(e.target.value) || 0 })} />
+                      <input className="input" type="number" placeholder="Ej: 50000"
+                        defaultValue={settings.quotaGroups || 50000}
+                        onBlur={e => { const v = parseInt(e.target.value); if(!isNaN(v)) update(ref(db, "settings"), { quotaGroups: v }); }} />
                     </div>
                     <div className="input-group" style={{ flex: 1 }}>
                       <label className="input-label">Cuota Eliminatorias</label>
-                      <input className="input" type="number" value={settings.quotaElim || 50000} onChange={e => update(ref(db, "settings"), { quotaElim: parseInt(e.target.value) || 0 })} />
+                      <input className="input" type="number" placeholder="Ej: 50000"
+                        defaultValue={settings.quotaElim || 50000}
+                        onBlur={e => { const v = parseInt(e.target.value); if(!isNaN(v)) update(ref(db, "settings"), { quotaElim: v }); }} />
                     </div>
                   </div>
                   <div className="input-group">
