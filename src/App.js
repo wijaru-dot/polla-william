@@ -724,7 +724,7 @@ export default function App() {
       showNotif(`¡Bienvenido de nuevo, ${existing.name}!`);
       return;
     }
-    const newUser = { id: genId(), name, role: "player", paid: false, active: false };
+    const newUser = { id: genId(), name, role: "player", paidGroups: false, paidElim: false, active: false };
     set(ref(db, `participants/${newUser.id}`), newUser);
     setCurrentUser(newUser);
     localStorage.setItem("polla_user", JSON.stringify(newUser));
@@ -743,13 +743,13 @@ export default function App() {
   
   // ── PREDICTIONS ───────────────────────────────────────────────────────────
   function savePrediction(matchId, pred) {
-    if (!currentUser?.active && currentUser?.role !== "admin") return showNotif("⚠️ Pago pendiente", "error");
+    if (!currentUser?.paidGroups && !currentUser?.paidElim && currentUser?.role !== "admin") return showNotif("⚠️ Pago pendiente", "error");
     set(ref(db, `predictions/${matchId}/${currentUser.id}`), { ...pred, userName: currentUser.name });
     showNotif("✅ Predicción guardada");
   }
 
   function saveChampPred(team) {
-    if (!currentUser?.active && currentUser?.role !== "admin") return showNotif("⚠️ Pago pendiente", "error");
+    if (!currentUser?.paidGroups && !currentUser?.paidElim && currentUser?.role !== "admin") return showNotif("⚠️ Pago pendiente", "error");
     set(ref(db, `champPredictions/${currentUser.id}`), { team, userName: currentUser.name });
     showNotif("🏆 Predicción de campeón guardada");
   }
@@ -932,7 +932,7 @@ export default function App() {
             {/* ── PREDICTIONS ── */}
             {activeTab === "predictions" && (
               <div>
-                {isPlayer && !currentUser.active && (
+                {isPlayer && !currentUser.paidGroups && !currentUser.paidElim && (
                   <div className="warning-box">⚠️ Tu pago está pendiente. Contacta a William para activar tu cuenta.</div>
                 )}
                 {isPlayer && (
@@ -1043,15 +1043,19 @@ export default function App() {
                   <div className="card-title">⚙️ Configuración</div>
                   <div className="input-row">
                     <div className="input-group" style={{ flex: 1 }}>
-                      <label className="input-label">Cuota</label>
-                      <input className="input" type="number" value={settings.quota} onChange={e => update(ref(db, "settings"), { quota: parseInt(e.target.value) || 0 })} />
+                      <label className="input-label">Cuota Grupos</label>
+                      <input className="input" type="number" value={settings.quotaGroups || 50000} onChange={e => update(ref(db, "settings"), { quotaGroups: parseInt(e.target.value) || 0 })} />
                     </div>
                     <div className="input-group" style={{ flex: 1 }}>
-                      <label className="input-label">Moneda</label>
-                      <select className="input" value={settings.currency} onChange={e => update(ref(db, "settings"), { currency: e.target.value })}>
-                        <option>COP</option><option>CAD</option><option>USD</option>
-                      </select>
+                      <label className="input-label">Cuota Eliminatorias</label>
+                      <input className="input" type="number" value={settings.quotaElim || 50000} onChange={e => update(ref(db, "settings"), { quotaElim: parseInt(e.target.value) || 0 })} />
                     </div>
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">Moneda</label>
+                    <select className="input" value={settings.currency} onChange={e => update(ref(db, "settings"), { currency: e.target.value })}>
+                      <option>COP</option><option>CAD</option><option>USD</option>
+                    </select>
                   </div>
                 </div>
                 <div className="pool-grid">
@@ -1078,24 +1082,38 @@ export default function App() {
                 <div className="card">
                   <div className="card-title">👥 Participantes ({participants.filter(p => p.role !== "admin").length})</div>
                   {participants.filter(p => p.role !== "admin").map(p => (
-                    <div key={p.id} className="payment-row">
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <div className={`paid-dot ${p.paid ? "paid-yes" : "paid-no"}`} />
+                    <div key={p.id} style={{ background: "var(--card2)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px", marginBottom: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                         <div className="avatar" style={{ width: 30, height: 30, fontSize: 12 }}>
                           {p.photoURL ? <img src={p.photoURL} alt="" /> : p.name[0].toUpperCase()}
                         </div>
-                        <div>
+                        <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</div>
-                          <div style={{ fontSize: 10, color: "var(--text3)" }}>{p.paid ? "✅ Pagó" : "⏳ Pendiente"} · {p.active ? "Activo" : "Suspendido"}</div>
+                          <div style={{ fontSize: 10, color: "var(--text3)" }}>{p.active ? "Activo" : "Suspendido"}</div>
                         </div>
-                      </div>
-                      <div style={{ display: "flex", gap: 4 }}>
-                        <button className={`btn btn-sm ${p.paid ? "btn-danger" : "btn-primary"}`} onClick={() => togglePaid(p)}>
-                          {p.paid ? "Revertir" : "Pagó ✓"}
-                        </button>
-                        <button className="btn btn-secondary btn-sm" onClick={() => toggleActive(p)} title={p.active ? "Suspender" : "Reactivar"}>
+                        <button className="btn btn-secondary btn-sm" onClick={() => toggleActive(p)}>
                           {p.active ? "⏸" : "▶️"}
                         </button>
+                      </div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <div style={{ flex: 1, background: "var(--bg2)", borderRadius: 8, padding: "8px 10px", border: "1px solid var(--border)" }}>
+                          <div style={{ fontSize: 10, color: "var(--text3)", marginBottom: 6 }}>⚽ Pozo Grupos</div>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <span style={{ fontSize: 11, color: p.paidGroups ? "var(--green)" : "var(--red)" }}>{p.paidGroups ? "✅ Pagó" : "⏳ Pendiente"}</span>
+                            <button className={"btn btn-sm " + (p.paidGroups ? "btn-danger" : "btn-primary")} style={{ fontSize: 11, padding: "3px 8px" }} onClick={() => togglePaidGroups(p)}>
+                              {p.paidGroups ? "Revertir" : "Confirmar"}
+                            </button>
+                          </div>
+                        </div>
+                        <div style={{ flex: 1, background: "var(--bg2)", borderRadius: 8, padding: "8px 10px", border: "1px solid var(--border)" }}>
+                          <div style={{ fontSize: 10, color: "var(--text3)", marginBottom: 6 }}>🏆 Pozo Elim.</div>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <span style={{ fontSize: 11, color: p.paidElim ? "var(--green)" : "var(--red)" }}>{p.paidElim ? "✅ Pagó" : "⏳ Pendiente"}</span>
+                            <button className={"btn btn-sm " + (p.paidElim ? "btn-danger" : "btn-primary")} style={{ fontSize: 11, padding: "3px 8px" }} onClick={() => togglePaidElim(p)}>
+                              {p.paidElim ? "Revertir" : "Confirmar"}
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
