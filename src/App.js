@@ -598,11 +598,22 @@ export default function App() {
     return () => unsubs.forEach(u => u());
   }, []);
 
-  // Restore session
+  // Restore session and sync with Firebase
   useEffect(() => {
     const saved = localStorage.getItem("polla_user");
     if (saved) {
-      try { setCurrentUser(JSON.parse(saved)); } catch {}
+      try {
+        const savedUser = JSON.parse(saved);
+        setCurrentUser(savedUser);
+        // Sync with latest Firebase data
+        onValue(ref(db, `participants/${savedUser.id}`), snap => {
+          const fresh = snap.val();
+          if (fresh) {
+            setCurrentUser(fresh);
+            localStorage.setItem("polla_user", JSON.stringify(fresh));
+          }
+        }, { onlyOnce: true });
+      } catch {}
     }
   }, []);
 
