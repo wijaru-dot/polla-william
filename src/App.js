@@ -800,6 +800,24 @@ export default function App() {
     showNotif(p.active ? "⏸ Participante suspendido" : "▶️ Participante reactivado");
   }
 
+  function togglePaidGroups(p) {
+    const newPaid = !p.paidGroups;
+    update(ref(db, `participants/${p.id}`), { paidGroups: newPaid, active: p.paidElim || newPaid });
+    const paidCount = participants.filter(u => u.paidGroups && u.id !== p.id).length + (newPaid ? 1 : 0);
+    const groupsTotal = paidCount * (settings.quotaGroups || 50000);
+    update(ref(db, "pools"), { groups: groupsTotal });
+    showNotif(newPaid ? "✅ Pago Grupos confirmado" : "Pago Grupos revertido");
+  }
+
+  function togglePaidElim(p) {
+    const newPaid = !p.paidElim;
+    update(ref(db, `participants/${p.id}`), { paidElim: newPaid, active: p.paidGroups || newPaid });
+    const paidCount = participants.filter(u => u.paidElim && u.id !== p.id).length + (newPaid ? 1 : 0);
+    const elimTotal = paidCount * (settings.quotaElim || 50000);
+    update(ref(db, "pools"), { eliminations: elimTotal });
+    showNotif(newPaid ? "✅ Pago Eliminatorias confirmado" : "Pago Eliminatorias revertido");
+  }
+
   function clearTestParticipants() {
     participants.filter(p => p.role !== "admin").forEach(p => {
       remove(ref(db, `participants/${p.id}`));
