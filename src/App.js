@@ -784,16 +784,7 @@ export default function App() {
   }
 
   // ── ADMIN: PARTICIPANTS ───────────────────────────────────────────────────
-  function togglePaid(p) {
-    const newPaid = !p.paid;
-    update(ref(db, `participants/${p.id}`), { paid: newPaid, active: newPaid });
-    // Recalc pools
-    const paidCount = participants.filter(u => u.paid && u.id !== p.id).length + (newPaid ? 1 : 0);
-    const total = paidCount * settings.quota;
-    const newPools = { groups: Math.round(total * 0.4), eliminations: Math.round(total * 0.6) };
-    set(ref(db, "pools"), newPools);
-    showNotif(newPaid ? "✅ Pago confirmado" : "Pago revertido");
-  }
+
 
   function toggleActive(p) {
     update(ref(db, `participants/${p.id}`), { active: !p.active });
