@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { db } from "./firebase";
 import { ref, onValue, set, update, remove } from "firebase/database";
 
@@ -675,7 +675,6 @@ export default function App() {
   const [selectedParticipant, setSelectedParticipant] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [newMatch, setNewMatch] = useState({ homeTeam: "", awayTeam: "", datetime: "", phase: "test" });
-  const fileInputRef = useRef();
 
   // Firebase data
   const [participants, setParticipants] = useState([]);
@@ -776,7 +775,6 @@ export default function App() {
   }
 
   // ── PHOTO UPLOAD ──────────────────────────────────────────────────────────
-  async function handlePhotoUpload(file) { showNotif("Fotos próximamente disponibles"); }
 
   
   // ── PREDICTIONS ───────────────────────────────────────────────────────────
