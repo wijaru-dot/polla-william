@@ -954,8 +954,14 @@ export default function App() {
     <>
       <style>{css}</style>
       <div className="loading">
-        <div className="loading-icon">⚽</div>
-        <div style={{ color: "var(--text2)", fontFamily: "Outfit, sans-serif" }}>Cargando...</div>
+        <div style={{ fontSize: 120, lineHeight: 1, animation: "bounce 1s infinite" }}>🐔</div>
+        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, color: "#FFD700", letterSpacing: 3, marginTop: 12 }}>¡PÉGUELE A LA POLLA!</div>
+        <div style={{ color: "rgba(255,255,255,0.5)", fontFamily: "Outfit, sans-serif", fontSize: 13, letterSpacing: 2, marginTop: 4 }}>MUNDIAL 2026</div>
+        <div style={{ marginTop: 24, display: "flex", gap: 6 }}>
+          {[0,1,2].map(i => (
+            <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: "#00C853", animation: `bounce ${0.4 + i*0.15}s infinite alternate` }} />
+          ))}
+        </div>
       </div>
     </>
   );
@@ -1102,12 +1108,12 @@ export default function App() {
                 <div className="pool-grid">
                   <div className="pool-card">
                     <div className="pool-label">💰 POZO GRUPOS</div>
-                    <div className="pool-amount">${pools.groups.toLocaleString()}</div>
+                    <div className="pool-amount">{"$" + pools.groups.toLocaleString()}</div>
                     <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency} · 70/30</div>
                   </div>
                   <div className="pool-card">
                     <div className="pool-label">🏆 POZO ELIM.</div>
-                    <div className="pool-amount">${pools.eliminations.toLocaleString()}</div>
+                    <div className="pool-amount">{"$" + pools.eliminations.toLocaleString()}</div>
                     <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency} · 70/30</div>
                   </div>
                 </div>
@@ -1177,12 +1183,12 @@ export default function App() {
                 <div className="pool-grid">
                   <div className="pool-card">
                     <div className="pool-label">💰 POZO GRUPOS</div>
-                    <div className="pool-amount">${pools.groups.toLocaleString()}</div>
+                    <div className="pool-amount">{"$" + pools.groups.toLocaleString()}</div>
                     <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>70% 1er · 30% 2do</div>
                   </div>
                   <div className="pool-card">
                     <div className="pool-label">🏆 POZO ELIM.</div>
-                    <div className="pool-amount">${pools.eliminations.toLocaleString()}</div>
+                    <div className="pool-amount">{"$" + pools.eliminations.toLocaleString()}</div>
                     <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>70% 1er · 30% 2do</div>
                   </div>
                 </div>
