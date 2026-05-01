@@ -954,12 +954,16 @@ export default function App() {
     <>
       <style>{css}</style>
       <div className="loading">
-        <div style={{ fontSize: 120, lineHeight: 1, animation: "bounce 1s infinite" }}>🐔</div>
+        <img 
+          src="/logo192.png" 
+          alt="Polla" 
+          style={{ width: 160, height: 160, borderRadius: "50%", border: "4px solid #FFD700", boxShadow: "0 0 40px rgba(255,215,0,0.4)", animation: "bounce 1.5s ease-in-out infinite" }}
+        />
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, color: "#FFD700", letterSpacing: 3, marginTop: 12 }}>¡PÉGUELE A LA POLLA!</div>
         <div style={{ color: "rgba(255,255,255,0.5)", fontFamily: "Outfit, sans-serif", fontSize: 13, letterSpacing: 2, marginTop: 4 }}>MUNDIAL 2026</div>
         <div style={{ marginTop: 24, display: "flex", gap: 6 }}>
           {[0,1,2].map(i => (
-            <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: "#00C853", animation: `bounce ${0.4 + i*0.15}s infinite alternate` }} />
+            <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: "#00C853", animation: "bounce " + (0.4 + i*0.15) + "s infinite alternate" }} />
           ))}
         </div>
       </div>
