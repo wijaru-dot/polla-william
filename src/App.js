@@ -10,10 +10,26 @@ function genCode() {
   const nums = Math.floor(Math.random() * 90 + 10);
   return words[Math.floor(Math.random() * words.length)] + nums;
 }
+const TEAM_FLAGS = {"México": "🇲🇽", "Corea del Sur": "🇰🇷", "Sudáfrica": "🇿🇦", "República Checa": "🇨🇿", "Canadá": "🇨🇦", "Suiza": "🇨🇭", "Qatar": "🇶🇦", "Bosnia y Herzegovina": "🇧🇦", "Brasil": "🇧🇷", "Marruecos": "🇲🇦", "Escocia": "🏴\U000e0067\U000e0062\U000e0073\U000e0063\U000e0074\U000e007f", "Haití": "🇭🇹", "Estados Unidos": "🇺🇸", "Australia": "🇦🇺", "Paraguay": "🇵🇾", "Turquía": "🇹🇷", "Alemania": "🇩🇪", "Ecuador": "🇪🇨", "Costa de Marfil": "🇨🇮", "Curazao": "🇨🇼", "Países Bajos": "🇳🇱", "Japón": "🇯🇵", "Túnez": "🇹🇳", "Suecia": "🇸🇪", "Bélgica": "🇧🇪", "Irán": "🇮🇷", "Egipto": "🇪🇬", "Nueva Zelandia": "🇳🇿", "España": "🇪🇸", "Uruguay": "🇺🇾", "Cabo Verde": "🇨🇻", "Arabia Saudita": "🇸🇦", "Francia": "🇫🇷", "Senegal": "🇸🇳", "Noruega": "🇳🇴", "Iraq": "🇮🇶", "Argentina": "🇦🇷", "Argelia": "🇩🇿", "Austria": "🇦🇹", "Jordania": "🇯🇴", "Portugal": "🇵🇹", "Colombia": "🇨🇴", "Uzbekistán": "🇺🇿", "RD del Congo": "🇨🇩", "Inglaterra": "🏴\U000e0067\U000e0062\U000e0065\U000e006e\U000e0067\U000e007f", "Croacia": "🇭🇷", "Panamá": "🇵🇦", "Ghana": "🇬🇭"};
+
+const WC2026_MATCHES = [{"id": "m001", "homeTeam": "México", "awayTeam": "Sudáfrica", "datetime": "2026-06-11T21:00:00Z", "phase": "groups", "group": "A", "stadium": "Ciudad de México", "enabled": false}, {"id": "m002", "homeTeam": "Corea del Sur", "awayTeam": "República Checa", "datetime": "2026-06-12T03:00:00Z", "phase": "groups", "group": "A", "stadium": "Guadalajara", "enabled": false}, {"id": "m003", "homeTeam": "República Checa", "awayTeam": "Sudáfrica", "datetime": "2026-06-18T17:00:00Z", "phase": "groups", "group": "A", "stadium": "Atlanta", "enabled": false}, {"id": "m004", "homeTeam": "México", "awayTeam": "Corea del Sur", "datetime": "2026-06-19T02:00:00Z", "phase": "groups", "group": "A", "stadium": "Guadalajara", "enabled": false}, {"id": "m005", "homeTeam": "República Checa", "awayTeam": "México", "datetime": "2026-06-25T02:00:00Z", "phase": "groups", "group": "A", "stadium": "Ciudad de México", "enabled": false}, {"id": "m006", "homeTeam": "Sudáfrica", "awayTeam": "Corea del Sur", "datetime": "2026-06-25T02:00:00Z", "phase": "groups", "group": "A", "stadium": "Monterrey", "enabled": false}, {"id": "m007", "homeTeam": "Canadá", "awayTeam": "Bosnia y Herzegovina", "datetime": "2026-06-12T20:00:00Z", "phase": "groups", "group": "B", "stadium": "Toronto", "enabled": false}, {"id": "m008", "homeTeam": "Qatar", "awayTeam": "Suiza", "datetime": "2026-06-13T20:00:00Z", "phase": "groups", "group": "B", "stadium": "San Francisco", "enabled": false}, {"id": "m009", "homeTeam": "Suiza", "awayTeam": "Bosnia y Herzegovina", "datetime": "2026-06-18T20:00:00Z", "phase": "groups", "group": "B", "stadium": "Los Ángeles", "enabled": false}, {"id": "m010", "homeTeam": "Canadá", "awayTeam": "Qatar", "datetime": "2026-06-18T23:00:00Z", "phase": "groups", "group": "B", "stadium": "Vancouver", "enabled": false}, {"id": "m011", "homeTeam": "Suiza", "awayTeam": "Canadá", "datetime": "2026-06-24T22:00:00Z", "phase": "groups", "group": "B", "stadium": "Vancouver", "enabled": false}, {"id": "m012", "homeTeam": "Bosnia y Herzegovina", "awayTeam": "Qatar", "datetime": "2026-06-24T22:00:00Z", "phase": "groups", "group": "B", "stadium": "Seattle", "enabled": false}, {"id": "m013", "homeTeam": "Brasil", "awayTeam": "Marruecos", "datetime": "2026-06-13T23:00:00Z", "phase": "groups", "group": "C", "stadium": "Nueva York/NJ", "enabled": false}, {"id": "m014", "homeTeam": "Haití", "awayTeam": "Escocia", "datetime": "2026-06-14T02:00:00Z", "phase": "groups", "group": "C", "stadium": "Boston", "enabled": false}, {"id": "m015", "homeTeam": "Escocia", "awayTeam": "Marruecos", "datetime": "2026-06-19T23:00:00Z", "phase": "groups", "group": "C", "stadium": "Boston", "enabled": false}, {"id": "m016", "homeTeam": "Brasil", "awayTeam": "Haití", "datetime": "2026-06-20T02:00:00Z", "phase": "groups", "group": "C", "stadium": "Filadelfia", "enabled": false}, {"id": "m017", "homeTeam": "Escocia", "awayTeam": "Brasil", "datetime": "2026-06-24T23:00:00Z", "phase": "groups", "group": "C", "stadium": "Miami", "enabled": false}, {"id": "m018", "homeTeam": "Marruecos", "awayTeam": "Haití", "datetime": "2026-06-24T23:00:00Z", "phase": "groups", "group": "C", "stadium": "Atlanta", "enabled": false}, {"id": "m019", "homeTeam": "Estados Unidos", "awayTeam": "Paraguay", "datetime": "2026-06-13T02:00:00Z", "phase": "groups", "group": "D", "stadium": "Los Ángeles", "enabled": false}, {"id": "m020", "homeTeam": "Australia", "awayTeam": "Turquía", "datetime": "2026-06-13T07:00:00Z", "phase": "groups", "group": "D", "stadium": "Vancouver", "enabled": false}, {"id": "m021", "homeTeam": "Turquía", "awayTeam": "Paraguay", "datetime": "2026-06-19T07:00:00Z", "phase": "groups", "group": "D", "stadium": "San Francisco", "enabled": false}, {"id": "m022", "homeTeam": "Estados Unidos", "awayTeam": "Australia", "datetime": "2026-06-19T20:00:00Z", "phase": "groups", "group": "D", "stadium": "Seattle", "enabled": false}, {"id": "m023", "homeTeam": "Turquía", "awayTeam": "Estados Unidos", "datetime": "2026-06-26T03:00:00Z", "phase": "groups", "group": "D", "stadium": "Los Ángeles", "enabled": false}, {"id": "m024", "homeTeam": "Paraguay", "awayTeam": "Australia", "datetime": "2026-06-26T03:00:00Z", "phase": "groups", "group": "D", "stadium": "San Francisco", "enabled": false}, {"id": "m025", "homeTeam": "Alemania", "awayTeam": "Curazao", "datetime": "2026-06-14T18:00:00Z", "phase": "groups", "group": "E", "stadium": "Houston", "enabled": false}, {"id": "m026", "homeTeam": "Costa de Marfil", "awayTeam": "Ecuador", "datetime": "2026-06-15T00:00:00Z", "phase": "groups", "group": "E", "stadium": "Filadelfia", "enabled": false}, {"id": "m027", "homeTeam": "Alemania", "awayTeam": "Costa de Marfil", "datetime": "2026-06-20T21:00:00Z", "phase": "groups", "group": "E", "stadium": "Toronto", "enabled": false}, {"id": "m028", "homeTeam": "Ecuador", "awayTeam": "Curazao", "datetime": "2026-06-21T01:00:00Z", "phase": "groups", "group": "E", "stadium": "Kansas City", "enabled": false}, {"id": "m029", "homeTeam": "Ecuador", "awayTeam": "Alemania", "datetime": "2026-06-25T21:00:00Z", "phase": "groups", "group": "E", "stadium": "Nueva York/NJ", "enabled": false}, {"id": "m030", "homeTeam": "Curazao", "awayTeam": "Costa de Marfil", "datetime": "2026-06-25T21:00:00Z", "phase": "groups", "group": "E", "stadium": "Filadelfia", "enabled": false}, {"id": "m031", "homeTeam": "Países Bajos", "awayTeam": "Japón", "datetime": "2026-06-14T21:00:00Z", "phase": "groups", "group": "F", "stadium": "Dallas", "enabled": false}, {"id": "m032", "homeTeam": "Suecia", "awayTeam": "Túnez", "datetime": "2026-06-15T03:00:00Z", "phase": "groups", "group": "F", "stadium": "Monterrey", "enabled": false}, {"id": "m033", "homeTeam": "Países Bajos", "awayTeam": "Suecia", "datetime": "2026-06-20T18:00:00Z", "phase": "groups", "group": "F", "stadium": "Houston", "enabled": false}, {"id": "m034", "homeTeam": "Túnez", "awayTeam": "Japón", "datetime": "2026-06-20T05:00:00Z", "phase": "groups", "group": "F", "stadium": "Monterrey", "enabled": false}, {"id": "m035", "homeTeam": "Japón", "awayTeam": "Suecia", "datetime": "2026-06-26T00:00:00Z", "phase": "groups", "group": "F", "stadium": "Dallas", "enabled": false}, {"id": "m036", "homeTeam": "Túnez", "awayTeam": "Países Bajos", "datetime": "2026-06-26T00:00:00Z", "phase": "groups", "group": "F", "stadium": "Kansas City", "enabled": false}, {"id": "m037", "homeTeam": "Irán", "awayTeam": "Nueva Zelandia", "datetime": "2026-06-16T04:00:00Z", "phase": "groups", "group": "G", "stadium": "Los Ángeles", "enabled": false}, {"id": "m038", "homeTeam": "Bélgica", "awayTeam": "Egipto", "datetime": "2026-06-15T20:00:00Z", "phase": "groups", "group": "G", "stadium": "Seattle", "enabled": false}, {"id": "m039", "homeTeam": "Bélgica", "awayTeam": "Irán", "datetime": "2026-06-21T20:00:00Z", "phase": "groups", "group": "G", "stadium": "Los Ángeles", "enabled": false}, {"id": "m040", "homeTeam": "Nueva Zelandia", "awayTeam": "Egipto", "datetime": "2026-06-22T04:00:00Z", "phase": "groups", "group": "G", "stadium": "Vancouver", "enabled": false}, {"id": "m041", "homeTeam": "Egipto", "awayTeam": "Irán", "datetime": "2026-06-27T04:00:00Z", "phase": "groups", "group": "G", "stadium": "Seattle", "enabled": false}, {"id": "m042", "homeTeam": "Nueva Zelandia", "awayTeam": "Bélgica", "datetime": "2026-06-27T04:00:00Z", "phase": "groups", "group": "G", "stadium": "Vancouver", "enabled": false}, {"id": "m043", "homeTeam": "España", "awayTeam": "Cabo Verde", "datetime": "2026-06-15T17:00:00Z", "phase": "groups", "group": "H", "stadium": "Atlanta", "enabled": false}, {"id": "m044", "homeTeam": "Arabia Saudita", "awayTeam": "Uruguay", "datetime": "2026-06-15T23:00:00Z", "phase": "groups", "group": "H", "stadium": "Miami", "enabled": false}, {"id": "m045", "homeTeam": "España", "awayTeam": "Arabia Saudita", "datetime": "2026-06-21T17:00:00Z", "phase": "groups", "group": "H", "stadium": "Atlanta", "enabled": false}, {"id": "m046", "homeTeam": "Uruguay", "awayTeam": "Cabo Verde", "datetime": "2026-06-21T23:00:00Z", "phase": "groups", "group": "H", "stadium": "Miami", "enabled": false}, {"id": "m047", "homeTeam": "Cabo Verde", "awayTeam": "Arabia Saudita", "datetime": "2026-06-27T01:00:00Z", "phase": "groups", "group": "H", "stadium": "Houston", "enabled": false}, {"id": "m048", "homeTeam": "Uruguay", "awayTeam": "España", "datetime": "2026-06-27T01:00:00Z", "phase": "groups", "group": "H", "stadium": "Guadalajara", "enabled": false}, {"id": "m049", "homeTeam": "Francia", "awayTeam": "Senegal", "datetime": "2026-06-16T20:00:00Z", "phase": "groups", "group": "I", "stadium": "Nueva York/NJ", "enabled": false}, {"id": "m050", "homeTeam": "Iraq", "awayTeam": "Noruega", "datetime": "2026-06-16T23:00:00Z", "phase": "groups", "group": "I", "stadium": "Boston", "enabled": false}, {"id": "m051", "homeTeam": "Francia", "awayTeam": "Iraq", "datetime": "2026-06-22T22:00:00Z", "phase": "groups", "group": "I", "stadium": "Filadelfia", "enabled": false}, {"id": "m052", "homeTeam": "Noruega", "awayTeam": "Senegal", "datetime": "2026-06-23T01:00:00Z", "phase": "groups", "group": "I", "stadium": "Nueva York/NJ", "enabled": false}, {"id": "m053", "homeTeam": "Noruega", "awayTeam": "Francia", "datetime": "2026-06-26T20:00:00Z", "phase": "groups", "group": "I", "stadium": "Boston", "enabled": false}, {"id": "m054", "homeTeam": "Senegal", "awayTeam": "Iraq", "datetime": "2026-06-26T20:00:00Z", "phase": "groups", "group": "I", "stadium": "Toronto", "enabled": false}, {"id": "m055", "homeTeam": "Argentina", "awayTeam": "Argelia", "datetime": "2026-06-17T02:00:00Z", "phase": "groups", "group": "J", "stadium": "Kansas City", "enabled": false}, {"id": "m056", "homeTeam": "Austria", "awayTeam": "Jordania", "datetime": "2026-06-17T05:00:00Z", "phase": "groups", "group": "J", "stadium": "San Francisco", "enabled": false}, {"id": "m057", "homeTeam": "Argentina", "awayTeam": "Austria", "datetime": "2026-06-22T18:00:00Z", "phase": "groups", "group": "J", "stadium": "Dallas", "enabled": false}, {"id": "m058", "homeTeam": "Jordania", "awayTeam": "Argelia", "datetime": "2026-06-23T04:00:00Z", "phase": "groups", "group": "J", "stadium": "San Francisco", "enabled": false}, {"id": "m059", "homeTeam": "Argelia", "awayTeam": "Austria", "datetime": "2026-06-28T03:00:00Z", "phase": "groups", "group": "J", "stadium": "Kansas City", "enabled": false}, {"id": "m060", "homeTeam": "Jordania", "awayTeam": "Argentina", "datetime": "2026-06-28T03:00:00Z", "phase": "groups", "group": "J", "stadium": "Dallas", "enabled": false}, {"id": "m061", "homeTeam": "Portugal", "awayTeam": "RD del Congo", "datetime": "2026-06-17T18:00:00Z", "phase": "groups", "group": "K", "stadium": "Houston", "enabled": false}, {"id": "m062", "homeTeam": "Uzbekistán", "awayTeam": "Colombia", "datetime": "2026-06-18T03:00:00Z", "phase": "groups", "group": "K", "stadium": "Ciudad de México", "enabled": false}, {"id": "m063", "homeTeam": "Portugal", "awayTeam": "Uzbekistán", "datetime": "2026-06-23T18:00:00Z", "phase": "groups", "group": "K", "stadium": "Houston", "enabled": false}, {"id": "m064", "homeTeam": "RD del Congo", "awayTeam": "Colombia", "datetime": "2026-06-24T03:00:00Z", "phase": "groups", "group": "K", "stadium": "Guadalajara", "enabled": false}, {"id": "m065", "homeTeam": "Colombia", "awayTeam": "Portugal", "datetime": "2026-06-28T00:30:00Z", "phase": "groups", "group": "K", "stadium": "Miami", "enabled": false}, {"id": "m066", "homeTeam": "RD del Congo", "awayTeam": "Uzbekistán", "datetime": "2026-06-28T00:30:00Z", "phase": "groups", "group": "K", "stadium": "Atlanta", "enabled": false}, {"id": "m067", "homeTeam": "Inglaterra", "awayTeam": "Croacia", "datetime": "2026-06-17T21:00:00Z", "phase": "groups", "group": "L", "stadium": "Dallas", "enabled": false}, {"id": "m068", "homeTeam": "Ghana", "awayTeam": "Panamá", "datetime": "2026-06-18T00:00:00Z", "phase": "groups", "group": "L", "stadium": "Toronto", "enabled": false}, {"id": "m069", "homeTeam": "Inglaterra", "awayTeam": "Ghana", "datetime": "2026-06-23T21:00:00Z", "phase": "groups", "group": "L", "stadium": "Boston", "enabled": false}, {"id": "m070", "homeTeam": "Panamá", "awayTeam": "Croacia", "datetime": "2026-06-24T00:00:00Z", "phase": "groups", "group": "L", "stadium": "Toronto", "enabled": false}, {"id": "m071", "homeTeam": "Panamá", "awayTeam": "Inglaterra", "datetime": "2026-06-27T22:00:00Z", "phase": "groups", "group": "L", "stadium": "Nueva York/NJ", "enabled": false}, {"id": "m072", "homeTeam": "Croacia", "awayTeam": "Ghana", "datetime": "2026-06-27T22:00:00Z", "phase": "groups", "group": "L", "stadium": "Filadelfia", "enabled": false}];
+
 function fmtDate(iso) {
   if (!iso) return "";
   const d = new Date(iso);
-  return d.toLocaleDateString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleDateString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZoneName: undefined });
+}
+
+function fmtDateFull(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleDateString("es-CO", { weekday: "short", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function getDateStr(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toISOString().split("T")[0];
 }
 function isPastDeadline(match) {
   if (!match?.datetime) return false;
@@ -380,13 +396,13 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
   return (
     <div className="match-card">
       <div className="match-meta">
-        <span>{fmtDate(match.datetime)}</span>
-        <span className={`phase-badge ${phaseClass}`}>{getPhaseLabel(match.phase)}</span>
+        <span>{fmtDate(match.datetime)}{match.stadium ? ` · ${match.stadium}` : ""}</span>
+        <span className={`phase-badge ${phaseClass}`}>{match.group ? `Grupo ${match.group}` : getPhaseLabel(match.phase)}</span>
       </div>
       <div className="match-teams">
-        <span className="team-name">{match.homeTeam}</span>
+        <span className="team-name">{TEAM_FLAGS[match.homeTeam] || "🏳️"} {match.homeTeam}</span>
         <span className="vs">VS</span>
-        <span className="team-name away">{match.awayTeam}</span>
+        <span className="team-name away">{match.awayTeam} {TEAM_FLAGS[match.awayTeam] || "🏳️"}</span>
       </div>
 
       {!finished && (
@@ -799,6 +815,36 @@ export default function App() {
     showNotif("⚽ Partido agregado");
   }
 
+  function loadWorldCupMatches() {
+    const existing = Object.values(matches);
+    let added = 0;
+    WC2026_MATCHES.forEach(m => {
+      if (!existing.find(e => e.id === m.id)) {
+        set(ref(db, `matches/${m.id}`), m);
+        added++;
+      }
+    });
+    showNotif(`✅ ${added} partidos cargados`);
+  }
+
+  function enableMatchDay(dateStr) {
+    // Enable all matches on a specific date
+    const dayMatches = Object.values(matches).filter(m => {
+      const d = new Date(m.datetime);
+      const matchDate = d.toISOString().split("T")[0];
+      return matchDate === dateStr && !m.enabled;
+    });
+    dayMatches.forEach(m => {
+      update(ref(db, `matches/${m.id}`), { enabled: true });
+    });
+    showNotif(`✅ ${dayMatches.length} partidos habilitados para ${dateStr}`);
+  }
+
+  function toggleMatchEnabled(matchId, currentState) {
+    update(ref(db, `matches/${matchId}`), { enabled: !currentState });
+    showNotif(!currentState ? "✅ Partido habilitado" : "⏸ Partido ocultado");
+  }
+
   function deleteMatch(id) {
     remove(ref(db, `matches/${id}`));
     showNotif("Partido eliminado");
@@ -891,8 +937,8 @@ export default function App() {
     .map(p => ({ ...p, ...computeStats(p.id, matches, predictions, champPredictions, settings.tournamentWinner) }))
     .sort((a, b) => b.total - a.total || b.exact - a.exact || b.pct - a.pct);
 
-  const upcomingMatches = Object.values(matches).filter(m => m.status !== "finished").sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
-  const finishedMatches = Object.values(matches).filter(m => m.status === "finished").sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
+  const upcomingMatches = Object.values(matches).filter(m => m.status !== "finished" && (m.enabled || m.phase === "test" || isAdmin)).sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+  const finishedMatches = Object.values(matches).filter(m => m.status === "finished" && (m.enabled || m.phase === "test" || isAdmin)).sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
   const isAdmin = currentUser?.role === "admin";
   const isPlayer = currentUser?.role === "player";
 
@@ -1193,6 +1239,7 @@ export default function App() {
                 </div>
                 <div className="tabs">
                   <button className={`tab ${adminTab === "matches" ? "active" : ""}`} onClick={() => setAdminTab("matches")}>Partidos</button>
+                  <button className={`tab ${adminTab === "wc" ? "active" : ""}`} onClick={() => setAdminTab("wc")}>🌍 Mundial</button>
                   <button className={`tab ${adminTab === "test" ? "active" : ""}`} onClick={() => setAdminTab("test")}>Prueba</button>
                   <button className={`tab ${adminTab === "champ" ? "active" : ""}`} onClick={() => setAdminTab("champ")}>Campeón 🏆</button>
                 </div>
@@ -1254,6 +1301,54 @@ export default function App() {
                           <EditMatch match={m} onEdit={editMatch} onCorrectResult={correctResult} />
                         </div>
                       ))}
+                  </div>
+                )}
+
+                {adminTab === "wc" && (
+                  <div>
+                    <div className="info-box">
+                      🌍 <strong>Partidos del Mundial 2026:</strong> Carga todos los 72 partidos de la fase de grupos. Luego los habilitas día a día para que los participantes puedan predecir.
+                    </div>
+                    <button className="btn btn-gold btn-full" style={{ marginBottom: 12 }} onClick={loadWorldCupMatches}>
+                      ⚽ Cargar 72 partidos de fase de grupos
+                    </button>
+                    <div className="admin-section-title">Habilitar por día</div>
+                    <div className="info-box" style={{ fontSize: 12 }}>
+                      Los participantes solo ven los partidos habilitados. Habilita los partidos del día siguiente para que puedan predecir con anticipación.
+                    </div>
+                    {(() => {
+                      const wcMatches = Object.values(matches).filter(m => m.phase === "groups" && m.id.startsWith("m0"));
+                      const days = [...new Set(wcMatches.map(m => getDateStr(m.datetime)))].sort();
+                      return days.map(day => {
+                        const dayMatches = wcMatches.filter(m => getDateStr(m.datetime) === day);
+                        const allEnabled = dayMatches.every(m => m.enabled);
+                        const someEnabled = dayMatches.some(m => m.enabled);
+                        return (
+                          <div key={day} style={{ background: "var(--card2)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px", marginBottom: 8 }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                              <div>
+                                <div style={{ fontWeight: 600, fontSize: 13 }}>{new Date(day + "T12:00:00Z").toLocaleDateString("es-CO", { weekday: "long", day: "2-digit", month: "long" })}</div>
+                                <div style={{ fontSize: 11, color: "var(--text3)" }}>{dayMatches.length} partidos · {someEnabled ? allEnabled ? "✅ Todos habilitados" : "⚡ Parcialmente habilitado" : "🔒 Ocultos"}</div>
+                              </div>
+                              <button className={"btn btn-sm " + (allEnabled ? "btn-danger" : "btn-primary")} onClick={() => enableMatchDay(day)}>
+                                {allEnabled ? "Ocultar" : "Habilitar"}
+                              </button>
+                            </div>
+                            {dayMatches.map(m => (
+                              <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 0", borderTop: "1px solid var(--border)", fontSize: 12 }}>
+                                <span style={{ color: "var(--text2)" }}>{TEAM_FLAGS[m.homeTeam]} {m.homeTeam} vs {m.awayTeam} {TEAM_FLAGS[m.awayTeam]}</span>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                  <span style={{ fontSize: 10, color: "var(--text3)" }}>{fmtDate(m.datetime)}</span>
+                                  <button className={"btn btn-sm " + (m.enabled ? "btn-danger" : "btn-secondary")} style={{ fontSize: 10, padding: "2px 6px" }} onClick={() => toggleMatchEnabled(m.id, m.enabled)}>
+                                    {m.enabled ? "✅" : "🔒"}
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
                 )}
 
