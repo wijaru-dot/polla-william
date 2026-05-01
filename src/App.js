@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { db } from "./firebase";
-import { ref, onValue, set, update, remove } from "firebase/database";
+import { ref, onValue, set as fbSet, update, remove } from "firebase/database";
 
 
 // ── UTILS ─────────────────────────────────────────────────────────────────────
@@ -728,7 +728,7 @@ export default function App() {
       const s = snap.val();
       if (s) setSettings(s);
       else {
-        set(ref(db, "settings"), { quotaGroups: 50000, quotaElim: 50000, currency: "COP", groupCode: genCode(), adminPassword: "admin123", tournamentWinner: "" });
+        fbSet(ref(db, "settings"), { quotaGroups: 50000, quotaElim: 50000, currency: "COP", groupCode: genCode(), adminPassword: "admin123", tournamentWinner: "" });
       }
     }));
     unsubs.push(onValue(ref(db, "pools"), snap => { setPools(snap.val() || { groups: 0, eliminations: 0 }); }));
@@ -736,7 +736,7 @@ export default function App() {
     // Init admin if not exists
     onValue(ref(db, "participants/admin"), snap => {
       if (!snap.val()) {
-        set(ref(db, "participants/admin"), { id: "admin", name: "Admin", role: "admin", paid: true, active: true });
+        fbSet(ref(db, "participants/admin"), { id: "admin", name: "Admin", role: "admin", paid: true, active: true });
       }
     }, { onlyOnce: true });
 
@@ -785,7 +785,7 @@ export default function App() {
       return;
     }
     const newUser = { id: genId(), name, role: "player", paidGroups: false, paidElim: false, active: false };
-    set(ref(db, `participants/${newUser.id}`), newUser);
+    fbSet(ref(db, `participants/${newUser.id}`), newUser);
     setCurrentUser(newUser);
     localStorage.setItem("polla_user", JSON.stringify(newUser));
     showNotif(`¡Bienvenido, ${name}! Espera confirmación de pago.`);
@@ -803,13 +803,13 @@ export default function App() {
   // ── PREDICTIONS ───────────────────────────────────────────────────────────
   function savePrediction(matchId, pred) {
     if (!currentUser?.paidGroups && !currentUser?.paidElim && currentUser?.role !== "admin") return showNotif("⚠️ Pago pendiente", "error");
-    set(ref(db, `predictions/${matchId}/${currentUser.id}`), { ...pred, userName: currentUser.name });
+    fbSet(ref(db, `predictions/${matchId}/${currentUser.id}`), { ...pred, userName: currentUser.name });
     showNotif("✅ Predicción guardada");
   }
 
   function saveChampPred(team) {
     if (!currentUser?.paidGroups && !currentUser?.paidElim && currentUser?.role !== "admin") return showNotif("⚠️ Pago pendiente", "error");
-    set(ref(db, `champPredictions/${currentUser.id}`), { team, userName: currentUser.name });
+    fbSet(ref(db, `champPredictions/${currentUser.id}`), { team, userName: currentUser.name });
     showNotif("🏆 Predicción de campeón guardada");
   }
 
@@ -817,7 +817,7 @@ export default function App() {
   function addMatch() {
     if (!newMatch.homeTeam || !newMatch.awayTeam || !newMatch.datetime) return showNotif("Completa todos los campos", "error");
     const id = genId();
-    set(ref(db, `matches/${id}`), { ...newMatch, id, status: "upcoming", result: null });
+    fbSet(ref(db, `matches/${id}`), { ...newMatch, id, status: "upcoming", result: null });
     setNewMatch({ homeTeam: "", awayTeam: "", datetime: "", phase: "test" });
     showNotif("⚽ Partido agregado");
   }
@@ -827,7 +827,7 @@ export default function App() {
     let added = 0;
     WC2026_MATCHES.forEach(m => {
       if (!existing.find(e => e.id === m.id)) {
-        set(ref(db, `matches/${m.id}`), m);
+        fbSet(ref(db, `matches/${m.id}`), m);
         added++;
       }
     });
@@ -885,7 +885,7 @@ export default function App() {
     update(ref(db, `participants/${p.id}`), { paidGroups: newPaid, active: p.paidElim || newPaid });
     const paidGroupsCount = participants.filter(u => u.paidGroups && u.id !== p.id).length + (newPaid ? 1 : 0);
     const paidElimCount = participants.filter(u => u.paidElim).length;
-    set(ref(db, "pools"), {
+    fbSet(ref(db, "pools"), {
       groups: paidGroupsCount * (settings.quotaGroups || 50000),
       eliminations: paidElimCount * (settings.quotaElim || 50000)
     });
@@ -897,7 +897,7 @@ export default function App() {
     update(ref(db, `participants/${p.id}`), { paidElim: newPaid, active: p.paidGroups || newPaid });
     const paidGroupsCount = participants.filter(u => u.paidGroups).length;
     const paidElimCount = participants.filter(u => u.paidElim && u.id !== p.id).length + (newPaid ? 1 : 0);
-    set(ref(db, "pools"), {
+    fbSet(ref(db, "pools"), {
       groups: paidGroupsCount * (settings.quotaGroups || 50000),
       eliminations: paidElimCount * (settings.quotaElim || 50000)
     });
@@ -935,7 +935,7 @@ export default function App() {
       eliminations: paidElimCount * (settings.quotaElim || 50000)
     };
     setPools(newPools);
-    set(ref(db, "pools"), newPools);
+    fbSet(ref(db, "pools"), newPools);
   }, [participants, settings.quotaGroups, settings.quotaElim]);
 
   // ── STANDINGS ─────────────────────────────────────────────────────────────
