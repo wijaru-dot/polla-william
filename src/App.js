@@ -1113,7 +1113,7 @@ export default function App() {
                 <div className="tabs">
                   <button className={`tab ${adminTab === "matches" ? "active" : ""}`} onClick={() => setAdminTab("matches")}>Partidos</button>
                   <button className={`tab ${adminTab === "test" ? "active" : ""}`} onClick={() => setAdminTab("test")}>Prueba</button>
-                  <button className={`tab ${adminTab === "champ" ? "active" : ""}`} onClick={() => setAdminTab("champ")}>Campeón</button>
+                  <button className={`tab ${adminTab === "champ" ? "active" : ""}`} onClick={() => setAdminTab("champ")}>Campeón 🏆</button>
                 </div>
 
                 {adminTab === "matches" && (
@@ -1207,7 +1207,7 @@ export default function App() {
                 {adminTab === "champ" && (
                   <div>
                     <div className="card">
-                      <div className="card-title">🏆 Campeón del Mundial</div>
+                      <div className="card-title">🏆 La Polla del Campeón</div>
                       <div className="input-group">
                         <label className="input-label">Equipo campeón (ingresar al finalizar el torneo)</label>
                         <input className="input" placeholder="Ej: Colombia 🇨🇴" value={settings.tournamentWinner || ""} onChange={e => update(ref(db, "settings"), { tournamentWinner: e.target.value })} />
