@@ -379,12 +379,13 @@ function StatsModal({ participant, stats, onClose, matches, predictions }) {
 function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, participants }) {
   const [pred, setPred] = useState(myPred || { home: 0, away: 0 });
   const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(!myPred);
   const locked = isPastDeadline(match);
   const finished = match.status === "finished";
   const isKnockout = match.phase !== "groups" && match.phase !== "test";
   const predDraw = parseInt(pred.home) === parseInt(pred.away);
 
-  useEffect(() => { setPred(myPred || { home: 0, away: 0 }); }, [myPred]);
+  useEffect(() => { setPred(myPred || { home: 0, away: 0 }); setEditing(!myPred); }, [myPred]);
 
   const myPts = finished ? calcPoints(myPred, match.result) : null;
   const phaseClass = match.phase === "test" ? "phase-test" : match.phase === "groups" ? "phase-groups" : "phase-knockout";
@@ -403,11 +404,18 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
 
       {!finished && (
         <div>
+          {(editing || !myPred) && (
           <div className="score-input-row">
             <Stepper value={pred.home} onChange={v => setPred(p => ({ ...p, home: v }))} disabled={locked} />
             <span className="score-dash">:</span>
             <Stepper value={pred.away} onChange={v => setPred(p => ({ ...p, away: v }))} disabled={locked} />
           </div>
+          )}
+          {!editing && myPred && !locked && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, padding: "8px 0" }}>
+              <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, color: "var(--green)", letterSpacing: 4 }}>{pred.home} — {pred.away}</span>
+            </div>
+          )}
           {isKnockout && predDraw && !locked && (
             <div style={{ marginTop: 8, padding: 10, background: "rgba(255,23,68,0.05)", borderRadius: 8, border: "1px solid rgba(255,23,68,0.12)" }}>
               <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 6 }}>⚠️ Predices empate → marcador de penales:</div>
@@ -419,12 +427,23 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
             </div>
           )}
           {!locked && (
-            <button className="btn btn-primary btn-full btn-sm" style={{ marginTop: 10 }} onClick={() => onSave(match.id, pred)}>
-              💾 Guardar predicción
-            </button>
+            <div style={{ marginTop: 10, display: "flex", gap: 6 }}>
+              {myPred && !editing ? (
+                <>
+                  <button className="btn btn-full" style={{ background: "rgba(0,200,83,0.12)", color: "var(--green)", border: "1.5px solid rgba(0,200,83,0.3)", borderRadius: 10, padding: "11px 18px", fontFamily: "Outfit, sans-serif", fontSize: 14, fontWeight: 600, cursor: "default" }}>
+                    ✅ Predicción guardada
+                  </button>
+                  <button className="btn btn-secondary btn-sm" style={{ flexShrink: 0 }} onClick={() => setEditing(true)}>✏️</button>
+                </>
+              ) : (
+                <button className="btn btn-primary btn-full btn-sm" onClick={() => { onSave(match.id, pred); setEditing(false); }}>
+                  💾 Guardar predicción
+                </button>
+              )}
+            </div>
           )}
           {locked && !myPred && <div className="warning-box" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>⏰ Sin predicción — 0 puntos</div>}
-          {locked && myPred && <div className="info-box" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>🔒 Predicción guardada</div>}
+          {locked && myPred && <div className="info-box" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>🔒 Predicción guardada · {myPred.home}-{myPred.away}</div>}
           {isAdmin && locked && <AdminSetResult match={match} onSetResult={onSetResult} />}
         </div>
       )}
