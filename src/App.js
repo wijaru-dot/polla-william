@@ -1272,7 +1272,7 @@ export default function App() {
               </div>
             )}
 
-            {/* ── STANDINGS ── */}}
+            {/* ── STANDINGS ── */}
             {activeTab === "standings" && (
               <div>
                 <div className="section-hero">
