@@ -271,6 +271,29 @@ const css = `
 
   /* MISC */
   .sep { height: 1px; background: var(--border); margin: 14px 0; }
+
+  /* GROUP TABLE */
+  .group-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; }
+  .group-header { background: linear-gradient(135deg, var(--green-deep), var(--green-dark)); padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; }
+  .group-header-title { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--gold); letter-spacing: 2px; }
+  .group-table { width: 100%; border-collapse: collapse; }
+  .group-table th { font-size: 10px; color: var(--text3); font-weight: 600; padding: 6px 8px; text-align: center; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+  .group-table th:first-child { text-align: left; padding-left: 12px; }
+  .group-table td { font-size: 12px; padding: 8px 8px; text-align: center; border-bottom: 1px solid var(--border); color: var(--text); }
+  .group-table td:first-child { text-align: left; padding-left: 12px; font-weight: 600; }
+  .group-table tr:last-child td { border-bottom: none; }
+  .group-table tr.qualified { background: rgba(0,200,83,0.06); }
+  .group-table tr.qualified-3rd { background: rgba(255,215,0,0.05); }
+  .group-table tr.eliminated { opacity: 0.6; }
+  .qualify-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; flex-shrink: 0; }
+  .qualify-1st { background: var(--green); box-shadow: 0 0 4px var(--green); }
+  .qualify-2nd { background: #4CAF50; }
+  .qualify-3rd { background: var(--gold); }
+  .group-results { padding: 8px 12px; border-top: 1px solid var(--border); }
+  .group-result-item { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .group-result-item:last-child { border-bottom: none; }
+  .result-teams { display: flex; align-items: center; gap: 4px; flex: 1; }
+  .result-score-badge { font-family: 'Bebas Neue', sans-serif; font-size: 16px; color: var(--gold); padding: 0 10px; letter-spacing: 2px; }
   .empty { text-align: center; padding: 36px 20px; color: var(--text3); }
   .empty-icon { font-size: 44px; margin-bottom: 10px; }
   .empty-text { font-size: 13px; }
@@ -614,6 +637,123 @@ function AdminSetResult({ match, onSetResult }) {
         <button className="btn btn-gold btn-sm" style={{ flex: 1 }} onClick={() => { onSetResult(match.id, { ...res, status: "finished", phase: match.phase }); setOpen(false); }}>✅ Confirmar</button>
         <button className="btn btn-secondary btn-sm" onClick={() => setOpen(false)}>✕</button>
       </div>
+    </div>
+  );
+}
+
+// ── GROUP STANDINGS CALCULATION ──────────────────────────────────────────────
+function calcGroupStandings(groupLetter, matches, flags) {
+  const groupMatches = Object.values(matches).filter(m => m.group === groupLetter && m.phase === "groups");
+  const teams = {};
+
+  // Initialize teams from matches
+  groupMatches.forEach(m => {
+    if (!teams[m.homeTeam]) teams[m.homeTeam] = { name: m.homeTeam, pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, pts: 0 };
+    if (!teams[m.awayTeam]) teams[m.awayTeam] = { name: m.awayTeam, pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, pts: 0 };
+
+    if (m.status === "finished" && m.result) {
+      const h = parseInt(m.result.home), a = parseInt(m.result.away);
+      teams[m.homeTeam].pj++; teams[m.awayTeam].pj++;
+      teams[m.homeTeam].gf += h; teams[m.homeTeam].gc += a;
+      teams[m.awayTeam].gf += a; teams[m.awayTeam].gc += h;
+      if (h > a) {
+        teams[m.homeTeam].pg++; teams[m.homeTeam].pts += 3;
+        teams[m.awayTeam].pp++;
+      } else if (h < a) {
+        teams[m.awayTeam].pg++; teams[m.awayTeam].pts += 3;
+        teams[m.homeTeam].pp++;
+      } else {
+        teams[m.homeTeam].pe++; teams[m.homeTeam].pts++;
+        teams[m.awayTeam].pe++; teams[m.awayTeam].pts++;
+      }
+    }
+  });
+
+  return Object.values(teams).sort((a, b) =>
+    b.pts - a.pts || (b.gf - b.gc) - (a.gf - a.gc) || b.gf - a.gf
+  );
+}
+
+function GroupCard({ groupLetter, matches, flags }) {
+  const [showResults, setShowResults] = useState(false);
+  const table = calcGroupStandings(groupLetter, matches, flags);
+  const groupMatches = Object.values(matches)
+    .filter(m => m.group === groupLetter && m.phase === "groups" && m.status === "finished")
+    .sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
+
+  const getQualifyClass = (idx, total) => {
+    if (idx < 2) return "qualified";
+    if (idx === 2) return "qualified-3rd";
+    return "eliminated";
+  };
+
+  const getDot = (idx) => {
+    if (idx === 0) return <span className="qualify-dot qualify-1st" />;
+    if (idx === 1) return <span className="qualify-dot qualify-2nd" />;
+    if (idx === 2) return <span className="qualify-dot qualify-3rd" />;
+    return null;
+  };
+
+  return (
+    <div className="group-card">
+      <div className="group-header">
+        <div className="group-header-title">Grupo {groupLetter}</div>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>
+          {table.filter(t => t.pj > 0).length > 0 ? `${table[0]?.pts || 0} pts líder` : "Sin partidos"}
+        </div>
+      </div>
+      <table className="group-table">
+        <thead>
+          <tr>
+            <th>Equipo</th>
+            <th>PJ</th>
+            <th>PG</th>
+            <th>PE</th>
+            <th>PP</th>
+            <th>GD</th>
+            <th>Pts</th>
+          </tr>
+        </thead>
+        <tbody>
+          {table.map((team, idx) => (
+            <tr key={team.name} className={getQualifyClass(idx, table.length)}>
+              <td>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  {getDot(idx)}
+                  <span>{flags[team.name] || "🏳️"}</span>
+                  <span style={{ fontSize: 11 }}>{team.name}</span>
+                </div>
+              </td>
+              <td>{team.pj}</td>
+              <td>{team.pg}</td>
+              <td>{team.pe}</td>
+              <td>{team.pp}</td>
+              <td style={{ color: team.gf - team.gc > 0 ? "var(--green)" : team.gf - team.gc < 0 ? "var(--red)" : "var(--text3)" }}>
+                {team.gf - team.gc > 0 ? "+" : ""}{team.gf - team.gc}
+              </td>
+              <td style={{ fontWeight: 700, color: "var(--text)" }}>{team.pts}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {groupMatches.length > 0 && (
+        <div className="group-results">
+          <button className="btn btn-secondary btn-sm btn-full" style={{ marginBottom: 8 }} onClick={() => setShowResults(r => !r)}>
+            {showResults ? "▲ Ocultar resultados" : `▼ Ver ${groupMatches.length} resultado${groupMatches.length > 1 ? "s" : ""}`}
+          </button>
+          {showResults && groupMatches.map(m => (
+            <div key={m.id} className="group-result-item">
+              <div className="result-teams">
+                <span>{flags[m.homeTeam] || "🏳️"} {m.homeTeam}</span>
+              </div>
+              <div className="result-score-badge">{m.result.home} - {m.result.away}</div>
+              <div className="result-teams" style={{ justifyContent: "flex-end" }}>
+                <span>{m.awayTeam} {flags[m.awayTeam] || "🏳️"}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1114,7 +1254,25 @@ export default function App() {
               </div>
             )}
 
-            {/* ── STANDINGS ── */}
+            {/* ── GROUPS ── */}
+            {activeTab === "groups" && (
+              <div>
+                <div className="section-hero">
+                  <div className="hero-title">📊 Fase de Grupos</div>
+                  <div className="hero-sub">Actualizado en tiempo real</div>
+                </div>
+                <div className="info-box" style={{ fontSize: 12 }}>
+                  <span style={{ color: "var(--green)" }}>●</span> Clasificado directo &nbsp;
+                  <span style={{ color: "#4CAF50" }}>●</span> 2do clasificado &nbsp;
+                  <span style={{ color: "var(--gold)" }}>●</span> Posible mejor 3ro
+                </div>
+                {["A","B","C","D","E","F","G","H","I","J","K","L"].map(g => (
+                  <GroupCard key={g} groupLetter={g} matches={matches} flags={TEAM_FLAGS} />
+                ))}
+              </div>
+            )}
+
+            {/* ── STANDINGS ── */}}
             {activeTab === "standings" && (
               <div>
                 <div className="section-hero">
@@ -1444,6 +1602,9 @@ export default function App() {
           <nav className="nav">
             <button className={`nav-btn ${activeTab === "predictions" ? "active" : ""}`} onClick={() => setActiveTab("predictions")}>
               <span className="icon">⚽</span>Partidos
+            </button>
+            <button className={`nav-btn ${activeTab === "groups" ? "active" : ""}`} onClick={() => setActiveTab("groups")}>
+              <span className="icon">📊</span>Grupos
             </button>
             <button className={`nav-btn ${activeTab === "standings" ? "active" : ""}`} onClick={() => setActiveTab("standings")}>
               <span className="icon">🏆</span>Escalafón
