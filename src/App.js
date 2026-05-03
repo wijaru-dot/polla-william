@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { db } from "./firebase";
+import { db, auth } from "./firebase";
 import { TEAM_FLAGS, WC2026_MATCHES } from "./worldcupData";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
 
 import { ref as dbRef, onValue, set as fbSet, update, remove } from "firebase/database";
 
@@ -787,6 +788,11 @@ function ProfileMenu({ user, onLogout, onClose }) {
             </div>
           </div>
         )}
+        {user.role === "admin" && (
+          <button className="btn btn-secondary btn-full btn-sm" style={{ marginBottom: 8 }} onClick={() => { onClose(); }}>
+            👤 Ver como participante
+          </button>
+        )}
         <button className="btn btn-danger btn-full btn-sm" onClick={() => { onLogout(); onClose(); }}>
           🚪 Cerrar sesión
         </button>
@@ -835,9 +841,11 @@ function ChampPrediction({ userId, userName, champPredictions, tournamentWinner,
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
 export default function App() {
   const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [loginForm, setLoginForm] = useState({ mode: "join", name: "", code: "", password: "" });
+  const [navHistory, setNavHistory] = useState([]);
+  const [loginForm, setLoginForm] = useState({ mode: "register", name: "", email: "", code: "", password: "", adminEmail: "", error: "" });
   const [activeTab, setActiveTab] = useState("predictions");
   const [predTab, setPredTab] = useState("upcoming");
   const [adminTab, setAdminTab] = useState("matches");
@@ -867,7 +875,12 @@ export default function App() {
       const data = snap.val() || {};
       const parts = Object.values(data);
       setParticipants(parts);
-      setLoading(false);
+      // Sync currentUser with latest Firebase data
+      setCurrentUser(prev => {
+        if (!prev || prev.role === "admin") return prev;
+        const fresh = data[prev.id];
+        return fresh ? { ...prev, ...fresh } : prev;
+      });
     }));
     unsubs.push(onValue(dbRef(db, "matches"), snap => setMatches(snap.val() || {})));
     unsubs.push(onValue(dbRef(db, "predictions"), snap => setPredictions(snap.val() || {})));
@@ -891,58 +904,130 @@ export default function App() {
     return () => unsubs.forEach(u => u());
   }, []);
 
-  // Restore session and sync with Firebase
+  // ── BACK NAVIGATION ──────────────────────────────────────────────────────
   useEffect(() => {
-    const saved = localStorage.getItem("polla_user");
-    if (saved) {
-      try {
-        const savedUser = JSON.parse(saved);
-        setCurrentUser(savedUser);
-        // Sync with latest Firebase data
-        onValue(dbRef(db, `participants/${savedUser.id}`), snap => {
-          const fresh = snap.val();
-          if (fresh) {
-            setCurrentUser(fresh);
-            localStorage.setItem("polla_user", JSON.stringify(fresh));
-          }
-        }, { onlyOnce: true });
-      } catch {}
-    }
-  }, []);
+    const handleBackButton = (e) => {
+      e.preventDefault();
+      // If profile menu open, close it
+      if (showProfileMenu) { setShowProfileMenu(false); return; }
+      // If stats modal open, close it
+      if (selectedParticipant) { setSelectedParticipant(null); return; }
+      // If in a sub-tab of admin, go to main admin tab
+      if (activeTab === "admin" && adminTab !== "matches") { setAdminTab("matches"); return; }
+      // If not on predictions (home), go to predictions
+      if (activeTab !== "predictions") { setActiveTab("predictions"); return; }
+      // Otherwise let the browser handle (exit app)
+    };
+    window.addEventListener("popstate", handleBackButton);
+    // Push a state so we can intercept back button
+    window.history.pushState({ page: activeTab }, "");
+    return () => window.removeEventListener("popstate", handleBackButton);
+  }, [activeTab, adminTab, showProfileMenu, selectedParticipant]);
 
   // ── AUTH ──────────────────────────────────────────────────────────────────
-  function handleLogin() {
+
+  // Listen to Firebase Auth state
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // Check if admin
+        const adminRef = dbRef(db, `admins/${firebaseUser.uid}`);
+        onValue(adminRef, snap => {
+          if (snap.val()) {
+            setCurrentUser({ id: firebaseUser.uid, name: "Admin", role: "admin", email: firebaseUser.email, active: true });
+          } else {
+            // Load player data from Firebase
+            onValue(dbRef(db, `participants/${firebaseUser.uid}`), pSnap => {
+              if (pSnap.val()) {
+                setCurrentUser(pSnap.val());
+              }
+            }, { onlyOnce: true });
+          }
+        }, { onlyOnce: true });
+      } else {
+        setCurrentUser(null);
+      }
+      setLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  async function handleRegister() {
     const name = loginForm.name.trim();
-    if (!name) return showNotif("Ingresa tu nombre", "error");
-
-    if (loginForm.mode === "admin") {
-      if (loginForm.password !== settings.adminPassword) return showNotif("Contraseña incorrecta", "error");
-      const adminUser = { id: "admin", name: "Admin", role: "admin", paid: true, active: true };
-      setCurrentUser(adminUser);
-      localStorage.setItem("polla_user", JSON.stringify(adminUser));
-      showNotif("¡Bienvenido, Admin!");
-      return;
+    const email = loginForm.email.trim();
+    if (!name) return setLoginForm(f => ({ ...f, error: "Ingresa tu nombre" }));
+    if (!email) return setLoginForm(f => ({ ...f, error: "Ingresa tu correo" }));
+    if (loginForm.code !== settings.groupCode) return setLoginForm(f => ({ ...f, error: "Código incorrecto" }));
+    setAuthLoading(true);
+    try {
+      const tempPassword = "Polla" + Math.random().toString(36).slice(2, 8) + "!";
+      const cred = await createUserWithEmailAndPassword(auth, email, tempPassword);
+      await updateProfile(cred.user, { displayName: name });
+      const newUser = { id: cred.user.uid, name, email, role: "player", paidGroups: false, paidElim: false, active: false, tempPassword };
+      await fbSet(dbRef(db, `participants/${cred.user.uid}`), newUser);
+      setCurrentUser(newUser);
+      showNotif(`¡Bienvenido, ${name}! Espera confirmación de pago.`);
+    } catch(e) {
+      const msg = e.code === "auth/email-already-in-use" ? "Este correo ya está registrado. Usa 'Ya tengo cuenta'" : e.message;
+      setLoginForm(f => ({ ...f, error: msg }));
     }
-
-    if (loginForm.code !== settings.groupCode) return showNotif("Código incorrecto", "error");
-    const existing = participants.find(p => p.name.toLowerCase() === name.toLowerCase() && p.role !== "admin");
-    if (existing) {
-      setCurrentUser(existing);
-      localStorage.setItem("polla_user", JSON.stringify(existing));
-      showNotif(`¡Bienvenido de nuevo, ${existing.name}!`);
-      return;
-    }
-    const newUser = { id: genId(), name, role: "player", paidGroups: false, paidElim: false, active: false };
-    fbSet(dbRef(db, `participants/${newUser.id}`), newUser);
-    setCurrentUser(newUser);
-    localStorage.setItem("polla_user", JSON.stringify(newUser));
-    showNotif(`¡Bienvenido, ${name}! Espera confirmación de pago.`);
+    setAuthLoading(false);
   }
 
-  function handleLogout() {
+  async function handleLogin() {
+    const email = loginForm.email.trim();
+    if (!email) return setLoginForm(f => ({ ...f, error: "Ingresa tu correo" }));
+    setAuthLoading(true);
+    try {
+      // Find user by email to get their password
+      const snap = await new Promise(resolve => onValue(dbRef(db, "participants"), s => resolve(s), { onlyOnce: true }));
+      const allUsers = snap.val() || {};
+      const userEntry = Object.values(allUsers).find(u => u.email === email);
+      if (!userEntry?.tempPassword) {
+        setLoginForm(f => ({ ...f, error: "Correo no encontrado. ¿Ya te registraste?" }));
+        setAuthLoading(false);
+        return;
+      }
+      await signInWithEmailAndPassword(auth, email, userEntry.tempPassword);
+      showNotif(`¡Bienvenido de nuevo, ${userEntry.name}!`);
+    } catch(e) {
+      setLoginForm(f => ({ ...f, error: "Correo o contraseña incorrectos" }));
+    }
+    setAuthLoading(false);
+  }
+
+  async function handleAdminLogin() {
+    const email = loginForm.adminEmail.trim();
+    const password = loginForm.password;
+    if (!email || !password) return setLoginForm(f => ({ ...f, error: "Completa los campos" }));
+    setAuthLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      showNotif("¡Bienvenido, Admin!");
+    } catch(e) {
+      setLoginForm(f => ({ ...f, error: "Credenciales incorrectas" }));
+    }
+    setAuthLoading(false);
+  }
+
+  async function handleForgotPassword() {
+    showNotif("Función disponible próximamente");
+  }
+
+  async function handleLogout() {
+    await signOut(auth);
     setCurrentUser(null);
-    localStorage.removeItem("polla_user");
     setActiveTab("predictions");
+    setNavHistory([]);
+  }
+
+  // Switch between admin and player profiles
+  function switchToPlayerProfile() {
+    const playerProfile = participants.find(p => p.email === currentUser.playerEmail);
+    if (playerProfile) {
+      setCurrentUser({ ...playerProfile, _adminMode: false });
+      showNotif(`Cambiando a perfil de jugador`);
+    }
   }
 
   // ── PHOTO UPLOAD ──────────────────────────────────────────────────────────
@@ -1133,34 +1218,80 @@ export default function App() {
           <div className="login-slogan">¡PÉGUELE A LA POLLA! — MUNDIAL 2026</div>
           <div className="login-card">
             <div className="login-tabs">
-              <button className={`login-tab ${loginForm.mode === "join" ? "active" : ""}`} onClick={() => setLoginForm(f => ({ ...f, mode: "join" }))}>Unirme</button>
-              <button className={`login-tab ${loginForm.mode === "admin" ? "active" : ""}`} onClick={() => setLoginForm(f => ({ ...f, mode: "admin" }))}>Admin</button>
+              <button className={`login-tab ${loginForm.mode === "register" ? "active" : ""}`} onClick={() => setLoginForm(f => ({ ...f, mode: "register" }))}>Registrarme</button>
+              <button className={`login-tab ${loginForm.mode === "login" ? "active" : ""}`} onClick={() => setLoginForm(f => ({ ...f, mode: "login" }))}>Ya tengo cuenta</button>
             </div>
-            <div className="input-group">
-              <label className="input-label">Tu nombre</label>
-              <input className="input" placeholder="James Rodriguez" value={loginForm.name} onChange={e => setLoginForm(f => ({ ...f, name: e.target.value }))} onKeyDown={e => e.key === "Enter" && handleLogin()} />
-            </div>
-            {loginForm.mode === "join" && (
-              <div className="input-group">
-                <label className="input-label">Código del grupo</label>
-                <input className="input" placeholder="Pide el código a William" value={loginForm.code} onChange={e => setLoginForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} onKeyDown={e => e.key === "Enter" && handleLogin()} />
-              </div>
+
+            {loginForm.mode === "register" && (
+              <>
+                <div className="input-group">
+                  <label className="input-label">Tu nombre</label>
+                  <input className="input" placeholder="James Rodriguez" value={loginForm.name} onChange={e => setLoginForm(f => ({ ...f, name: e.target.value }))} />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">Tu correo</label>
+                  <input className="input" type="email" placeholder="correo@ejemplo.com" value={loginForm.email} onChange={e => setLoginForm(f => ({ ...f, email: e.target.value }))} />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">Código del grupo</label>
+                  <input className="input" placeholder="Pide el código a William" value={loginForm.code} onChange={e => setLoginForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} onKeyDown={e => e.key === "Enter" && handleRegister()} />
+                </div>
+                <button className="btn btn-primary btn-full" onClick={handleRegister} disabled={authLoading}>
+                  {authLoading ? "⏳ Registrando..." : "🚀 Unirme al grupo"}
+                </button>
+                <div style={{ marginTop: 10, fontSize: 12, color: "var(--text3)", textAlign: "center", lineHeight: 1.5 }}>
+                  Tu acceso se activa una vez confirmes el pago con William.
+                </div>
+              </>
             )}
-            {loginForm.mode === "admin" && (
-              <div className="input-group">
-                <label className="input-label">Contraseña admin</label>
-                <input className="input" type="password" placeholder="••••••••" value={loginForm.password} onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))} onKeyDown={e => e.key === "Enter" && handleLogin()} />
-              </div>
+
+            {loginForm.mode === "login" && (
+              <>
+                <div className="input-group">
+                  <label className="input-label">Tu correo</label>
+                  <input className="input" type="email" placeholder="correo@ejemplo.com" value={loginForm.email} onChange={e => setLoginForm(f => ({ ...f, email: e.target.value }))} />
+                </div>
+                <div className="input-group">
+                  <label className="input-label">Contraseña</label>
+                  <input className="input" type="password" placeholder="••••••••" value={loginForm.password} onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))} onKeyDown={e => e.key === "Enter" && handleLogin()} />
+                </div>
+                <button className="btn btn-primary btn-full" onClick={handleLogin} disabled={authLoading}>
+                  {authLoading ? "⏳ Entrando..." : "🔐 Entrar"}
+                </button>
+                <button className="btn btn-secondary btn-full" style={{ marginTop: 8 }} onClick={handleForgotPassword} disabled={!loginForm.email}>
+                  ¿Olvidaste tu contraseña?
+                </button>
+              </>
             )}
-            <button className="btn btn-primary btn-full" onClick={handleLogin}>
-              {loginForm.mode === "join" ? "🚀 Unirme al grupo" : "🔐 Ingresar"}
-            </button>
-            {loginForm.mode === "join" && (
-              <div style={{ marginTop: 10, fontSize: 12, color: "var(--text3)", textAlign: "center", lineHeight: 1.5 }}>
-                Tu acceso se activa una vez confirmes el pago con William.
-              </div>
+
+            {loginForm.error && (
+              <div className="warning-box" style={{ marginTop: 10, marginBottom: 0 }}>{loginForm.error}</div>
             )}
           </div>
+
+          {/* Admin access - hidden */}
+          <div style={{ marginTop: 16, textAlign: "center" }}>
+            <button style={{ background: "none", border: "none", color: "rgba(255,255,255,0.2)", fontSize: 11, cursor: "pointer" }} onClick={() => setLoginForm(f => ({ ...f, mode: f.mode === "admin" ? "register" : "admin" }))}>
+              {loginForm.mode === "admin" ? "← Volver" : "⚙"}
+            </button>
+          </div>
+
+          {loginForm.mode === "admin" && (
+            <div className="login-card" style={{ marginTop: 12, maxWidth: 360 }}>
+              <div style={{ fontSize: 13, color: "var(--text2)", marginBottom: 12, fontWeight: 600 }}>Acceso Administrador</div>
+              <div className="input-group">
+                <label className="input-label">Correo admin</label>
+                <input className="input" type="email" placeholder="admin@polla.com" value={loginForm.adminEmail} onChange={e => setLoginForm(f => ({ ...f, adminEmail: e.target.value }))} />
+              </div>
+              <div className="input-group">
+                <label className="input-label">Contraseña</label>
+                <input className="input" type="password" placeholder="••••••••" value={loginForm.password} onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))} onKeyDown={e => e.key === "Enter" && handleAdminLogin()} />
+              </div>
+              <button className="btn btn-gold btn-full" onClick={handleAdminLogin} disabled={authLoading}>
+                {authLoading ? "⏳..." : "🔐 Entrar como Admin"}
+              </button>
+            </div>
+          )}
         </div>
         {notif && <div className="notif">{notif.msg}</div>}
       </div>
@@ -1569,6 +1700,12 @@ export default function App() {
 
                 {adminTab === "champ" && (
                   <div>
+                    <div className="card">
+                      <div className="card-title">🔐 Cuenta de Administrador</div>
+                      <div className="info-box" style={{ fontSize: 12 }}>
+                        Para crear tu cuenta de admin, ve a Firebase Console → Authentication → Agregar usuario manualmente con tu correo y contraseña segura. Luego en Realtime Database agrega tu UID en la ruta <strong>/admins/TU_UID: true</strong>
+                      </div>
+                    </div>
                     <div className="card">
                       <div className="card-title">🏆 La Polla del Campeón</div>
                       <div className="input-group">
