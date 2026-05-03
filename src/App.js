@@ -844,7 +844,6 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [navHistory, setNavHistory] = useState([]);
   const [loginForm, setLoginForm] = useState({ mode: "register", name: "", email: "", code: "", password: "", adminEmail: "", error: "" });
   const [activeTab, setActiveTab] = useState("predictions");
   const [predTab, setPredTab] = useState("upcoming");
@@ -1018,14 +1017,8 @@ export default function App() {
     await signOut(auth);
     setCurrentUser(null);
     setActiveTab("predictions");
-    setNavHistory([]);
   }
-
-  // Switch between admin and player profiles
-  function switchToPlayerProfile() {
-    const playerProfile = participants.find(p => p.email === currentUser.playerEmail);
-    if (playerProfile) {
-      setCurrentUser({ ...playerProfile, _adminMode: false });
+);
       showNotif(`Cambiando a perfil de jugador`);
     }
   }
