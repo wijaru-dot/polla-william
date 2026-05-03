@@ -1023,9 +1023,6 @@ export default function App() {
     setAuthLoading(false);
   }
 
-  async function handleForgotPassword() {
-    showNotif("Función disponible próximamente");
-  }
 
   async function handleLogout() {
     await signOut(auth);
