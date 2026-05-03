@@ -959,6 +959,17 @@ export default function App() {
     if (loginForm.code !== settings.groupCode) return setLoginForm(f => ({ ...f, error: "Código incorrecto" }));
     setAuthLoading(true);
     try {
+      // Check if already registered in participants
+      const snap = await new Promise(resolve => onValue(dbRef(db, "participants"), s => resolve(s), { onlyOnce: true }));
+      const allUsers = snap.val() || {};
+      const existing = Object.values(allUsers).find(u => u.email === email);
+      if (existing) {
+        // Already registered - just sign in
+        await signInWithEmailAndPassword(auth, email, existing.tempPassword);
+        showNotif(`¡Bienvenido de nuevo, ${existing.name}!`);
+        setAuthLoading(false);
+        return;
+      }
       const tempPassword = "Polla" + Math.random().toString(36).slice(2, 8) + "!";
       const cred = await createUserWithEmailAndPassword(auth, email, tempPassword);
       await updateProfile(cred.user, { displayName: name });
@@ -967,8 +978,11 @@ export default function App() {
       setCurrentUser(newUser);
       showNotif(`¡Bienvenido, ${name}! Espera confirmación de pago.`);
     } catch(e) {
-      const msg = e.code === "auth/email-already-in-use" ? "Este correo ya está registrado. Usa 'Ya tengo cuenta'" : e.message;
-      setLoginForm(f => ({ ...f, error: msg }));
+      if (e.code === "auth/email-already-in-use") {
+        setLoginForm(f => ({ ...f, error: "Correo ya registrado. Toca 'Ya tengo cuenta' e ingresa tu correo." }));
+      } else {
+        setLoginForm(f => ({ ...f, error: e.message }));
+      }
     }
     setAuthLoading(false);
   }
@@ -978,11 +992,10 @@ export default function App() {
     if (!email) return setLoginForm(f => ({ ...f, error: "Ingresa tu correo" }));
     setAuthLoading(true);
     try {
-      // Find user by email to get their password
       const snap = await new Promise(resolve => onValue(dbRef(db, "participants"), s => resolve(s), { onlyOnce: true }));
       const allUsers = snap.val() || {};
       const userEntry = Object.values(allUsers).find(u => u.email === email);
-      if (!userEntry?.tempPassword) {
+      if (!userEntry) {
         setLoginForm(f => ({ ...f, error: "Correo no encontrado. ¿Ya te registraste?" }));
         setAuthLoading(false);
         return;
@@ -990,7 +1003,8 @@ export default function App() {
       await signInWithEmailAndPassword(auth, email, userEntry.tempPassword);
       showNotif(`¡Bienvenido de nuevo, ${userEntry.name}!`);
     } catch(e) {
-      setLoginForm(f => ({ ...f, error: "Correo o contraseña incorrectos" }));
+      // If signin fails, try to re-register with existing data
+      setLoginForm(f => ({ ...f, error: "Error al entrar. Intenta registrarte de nuevo." }));
     }
     setAuthLoading(false);
   }
@@ -1238,17 +1252,10 @@ export default function App() {
               <>
                 <div className="input-group">
                   <label className="input-label">Tu correo</label>
-                  <input className="input" type="email" placeholder="correo@ejemplo.com" value={loginForm.email} onChange={e => setLoginForm(f => ({ ...f, email: e.target.value }))} />
-                </div>
-                <div className="input-group">
-                  <label className="input-label">Contraseña</label>
-                  <input className="input" type="password" placeholder="••••••••" value={loginForm.password} onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))} onKeyDown={e => e.key === "Enter" && handleLogin()} />
+                  <input className="input" type="email" placeholder="correo@ejemplo.com" value={loginForm.email} onChange={e => setLoginForm(f => ({ ...f, email: e.target.value }))} onKeyDown={e => e.key === "Enter" && handleLogin()} />
                 </div>
                 <button className="btn btn-primary btn-full" onClick={handleLogin} disabled={authLoading}>
-                  {authLoading ? "⏳ Entrando..." : "🔐 Entrar"}
-                </button>
-                <button className="btn btn-secondary btn-full" style={{ marginTop: 8 }} onClick={handleForgotPassword} disabled={!loginForm.email}>
-                  ¿Olvidaste tu contraseña?
+                  {authLoading ? "⏳ Buscando cuenta..." : "🔐 Entrar"}
                 </button>
               </>
             )}
