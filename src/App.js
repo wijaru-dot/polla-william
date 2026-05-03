@@ -1018,10 +1018,6 @@ export default function App() {
     setCurrentUser(null);
     setActiveTab("predictions");
   }
-);
-      showNotif(`Cambiando a perfil de jugador`);
-    }
-  }
 
   // ── PHOTO UPLOAD ──────────────────────────────────────────────────────────
 
