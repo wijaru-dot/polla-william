@@ -75,7 +75,7 @@ function useLiveScore(match) {
     fetchScore();
     const interval = setInterval(fetchScore, 60000); // poll every 60s
     return () => clearInterval(interval);
-  }, [match?.id, match?.datetime, match?.status]);
+  }, [match?.id, match?.datetime, match?.status, match?.homeTeam, match?.awayTeam]);
 
   return { liveData, isLive };
 }
