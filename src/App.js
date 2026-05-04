@@ -1541,7 +1541,7 @@ export default function App() {
                           <div style={{ display: "flex", gap: 6 }}>
                             {!t.isActive && <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => setActiveTournament(t.id)}>✅ Activar</button>}
                             <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => { setActiveTournamentId(t.id); setAdminTab("matches"); }}>⚽ Ver partidos</button>
-                            {!t.isActive && <button className="btn btn-danger btn-sm" onClick={() => deleteTournament(t.id)}>🗑</button>}
+                            {<button className="btn btn-danger btn-sm" onClick={() => deleteTournament(t.id)}>🗑</button>}
                           </div>
                         </div>
                       ))
