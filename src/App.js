@@ -2,31 +2,24 @@ import { useState, useEffect, useCallback } from "react";
 import { db, auth } from "./firebase";
 import { TEAM_FLAGS, WC2026_MATCHES } from "./worldcupData";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
-
 import { ref as dbRef, onValue, set as fbSet, update, remove } from "firebase/database";
 
-
-// ── UTILS ─────────────────────────────────────────────────────────────────────
+// ── UTILS ──────────────────────────────────────────────────────────────────────
 function genId() { return Math.random().toString(36).slice(2, 9); }
 function genCode() {
   const words = ["GALLO", "POLLA", "GOL", "CRACK", "ONCE", "BALON", "PIBE", "CAFETERO"];
   const nums = Math.floor(Math.random() * 90 + 10);
   return words[Math.floor(Math.random() * words.length)] + nums;
 }
-
 function fmtDate(iso) {
   if (!iso) return "";
   const d = new Date(iso);
-  return d.toLocaleDateString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZoneName: undefined });
+  return d.toLocaleDateString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
-
 function getDateStr(iso) {
   if (!iso) return "";
   const d = new Date(iso);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return year + "-" + month + "-" + day;
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
 function isPastDeadline(match) {
   if (!match?.datetime) return false;
@@ -37,9 +30,20 @@ function getPhaseLabel(phase) {
   return map[phase] || phase;
 }
 
-// ── SCORING ───────────────────────────────────────────────────────────────────
-function calcPoints(pred, result) {
+// Tournament type labels
+const TOURNAMENT_TYPES = {
+  worldcup: { label: "Copa del Mundo", icon: "🌍" },
+  champions: { label: "Champions League", icon: "⭐" },
+  copa_america: { label: "Copa América", icon: "🌎" },
+  euro: { label: "Eurocopa", icon: "🇪🇺" },
+  libertadores: { label: "Copa Libertadores", icon: "🏆" },
+  custom: { label: "Personalizado", icon: "⚽" },
+};
+
+// ── SCORING ────────────────────────────────────────────────────────────────────
+function calcPoints(pred, result, scoring) {
   if (!pred || !result || result.status !== "finished") return null;
+  const s = scoring || { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1 };
   let pts = 0;
   const pHome = parseInt(pred.home) || 0, pAway = parseInt(pred.away) || 0;
   const rHome = parseInt(result.home), rAway = parseInt(result.away);
@@ -51,63 +55,63 @@ function calcPoints(pred, result) {
     if (result.penalties) {
       const realPensWinner = parseInt(result.pensHome) > parseInt(result.pensAway) ? "home" : "away";
       if (predWinner === "draw") {
-        pts += 2;
-        if (pHome === rHome && pAway === rAway) pts += 3;
+        pts += s.winner;
+        if (pHome === rHome && pAway === rAway) pts += s.exact;
         if (pred.pensHome !== undefined && pred.pensAway !== undefined) {
-          if (parseInt(pred.pensHome) === parseInt(result.pensHome) && parseInt(pred.pensAway) === parseInt(result.pensAway)) pts += 3;
+          if (parseInt(pred.pensHome) === parseInt(result.pensHome) && parseInt(pred.pensAway) === parseInt(result.pensAway)) pts += s.penalty;
         }
       } else {
-        if (predWinner === realPensWinner) pts += 1;
+        if (predWinner === realPensWinner) pts += s.wrongPenalty;
       }
     } else {
       const realET_Home = parseInt(result.etHome ?? result.home);
       const realET_Away = parseInt(result.etAway ?? result.away);
       const realETWinner = realET_Home > realET_Away ? "home" : "away";
-      if (predWinner === "draw") pts += 2;
-      if (predWinner !== "draw" && predWinner === realETWinner) pts += 2;
-      if (pHome === realET_Home && pAway === realET_Away) pts += 3;
+      if (predWinner === "draw") pts += s.winner;
+      if (predWinner !== "draw" && predWinner === realETWinner) pts += s.winner;
+      if (pHome === realET_Home && pAway === realET_Away) pts += s.exact;
     }
   } else {
-    if (predWinner === realWinner) pts += 2;
-    if (pHome === rHome && pAway === rAway) pts += 3;
+    if (predWinner === realWinner) pts += s.winner;
+    if (pHome === rHome && pAway === rAway) pts += s.exact;
   }
   return pts;
 }
 
-function calcChampPoints(pred, winner) {
+function calcChampPoints(pred, winner, champPoints) {
   if (!pred || !winner) return 0;
-  return pred === winner ? 10 : 0;
+  return pred === winner ? (champPoints || 10) : 0;
 }
 
-function computeStats(participantId, matches, predictions, champPredictions, tournamentWinner) {
+function computeStats(participantId, matches, predictions, champPredictions, tournamentWinner, scoring) {
   let total = 0, exact = 0, wins = 0, maxStreak = 0, tempStreak = 0;
-  let groupsPts = 0, elimPts = 0, played = 0;
+  let groupsPts = 0, elimPts = 0, played = 0, noPred = 0;
+  const champPts = calcChampPoints(champPredictions?.[participantId]?.team, tournamentWinner, scoring?.champion);
   const finishedMatches = Object.values(matches || {}).filter(m => m.status === "finished").sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+  const totalMatches = finishedMatches.length;
 
   finishedMatches.forEach(m => {
     const pred = predictions?.[m.id]?.[participantId];
-    const pts = calcPoints(pred, m.result) ?? 0;
+    const pts = calcPoints(pred, m.result, scoring) ?? 0;
     if (pred) played++;
+    else noPred++;
     total += pts;
-    if (pts >= 5) exact++;
-    if (pts >= 2) { wins++; tempStreak++; maxStreak = Math.max(maxStreak, tempStreak); }
+    if (pts >= (scoring?.exact || 3) + (scoring?.winner || 2)) exact++;
+    if (pts >= (scoring?.winner || 2)) { wins++; tempStreak++; maxStreak = Math.max(maxStreak, tempStreak); }
     else tempStreak = 0;
     if (m.phase === "groups" || m.phase === "test") groupsPts += pts;
     else elimPts += pts;
   });
 
-  const champPts = calcChampPoints(champPredictions?.[participantId]?.team, tournamentWinner);
   total += champPts;
   const pct = played > 0 ? Math.round((wins / played) * 100) : 0;
-
-  return { total, exact, wins, groupsPts, elimPts, champPts, streak: maxStreak, pct, played };
+  return { total, exact, wins, groupsPts, elimPts, champPts, streak: maxStreak, pct, played, noPred, totalMatches };
 }
 
-// ── CSS ───────────────────────────────────────────────────────────────────────
+// ── CSS ────────────────────────────────────────────────────────────────────────
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
   :root {
     --green: #00C853; --green-dark: #007B33; --green-deep: #004D20;
     --gold: #FFD700; --gold-dark: #B8860B; --red: #FF1744;
@@ -121,7 +125,6 @@ const css = `
     --card: #ffffff; --card2: #f5faf5; --border: #c8ddc8;
     --text: #0d1f0d; --text2: #3a5a3a; --text3: #7a9a7a;
   }
-
   body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
   .app { max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
 
@@ -132,13 +135,18 @@ const css = `
   .header-right { display: flex; align-items: center; gap: 8px; }
   .dark-toggle { background: none; border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 8px; padding: 4px 8px; font-size: 13px; cursor: pointer; }
 
+  /* TOURNAMENT SELECTOR */
+  .tournament-bar { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 8px 14px; display: flex; align-items: center; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .tournament-bar::-webkit-scrollbar { display: none; }
+  .tournament-chip { display: flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 20px; border: 1.5px solid var(--border); background: none; color: var(--text2); font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.2s; flex-shrink: 0; }
+  .tournament-chip.active { background: var(--green-dark); border-color: var(--green); color: white; }
+  .tournament-chip .t-icon { font-size: 14px; }
+
   /* AVATAR */
   .avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--gold); color: var(--green-deep); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; cursor: pointer; border: 2px solid rgba(255,255,255,0.2); overflow: hidden; flex-shrink: 0; }
   .avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .avatar-lg { width: 56px; height: 56px; border-radius: 50%; background: var(--gold); color: var(--green-deep); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px; border: 3px solid var(--green); overflow: hidden; flex-shrink: 0; cursor: pointer; position: relative; }
+  .avatar-lg { width: 56px; height: 56px; border-radius: 50%; background: var(--gold); color: var(--green-deep); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px; border: 3px solid var(--green); overflow: hidden; flex-shrink: 0; }
   .avatar-lg img { width: 100%; height: 100%; object-fit: cover; }
-  .avatar-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 18px; opacity: 0; transition: opacity 0.2s; border-radius: 50%; }
-  .avatar-lg:hover .avatar-overlay { opacity: 1; }
 
   /* NAV */
   .nav { display: flex; background: var(--card); border-top: 1px solid var(--border); position: sticky; bottom: 0; z-index: 100; }
@@ -154,7 +162,7 @@ const css = `
   .card-title { font-weight: 700; font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
 
   /* MATCH CARD */
-  .match-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; transition: border-color 0.2s; color: var(--text); }
+  .match-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; transition: border-color 0.2s; }
   .match-card:hover { border-color: var(--green-dark); }
   .match-teams { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
   .team-name { font-weight: 700; font-size: 14px; flex: 1; color: var(--text); }
@@ -188,14 +196,14 @@ const css = `
   /* REVEAL GRID */
   .reveal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
   .reveal-item { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
-  .reveal-name { font-size: 11px; color: var(--text3); margin-bottom: 3px; display: flex; align-items: center; gap: 4px; }
+  .reveal-name { font-size: 11px; color: var(--text3); margin-bottom: 3px; }
   .reveal-score { font-family: 'Bebas Neue', sans-serif; font-size: 16px; color: var(--text); display: flex; align-items: center; justify-content: space-between; }
 
   /* STANDINGS */
-  .standings-row { display: flex; align-items: center; gap: 10px; padding: 12px 12px; border-radius: 10px; margin-bottom: 6px; background: var(--card); border: 1px solid var(--border); cursor: pointer; transition: all 0.2s; }
+  .standings-row { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 10px; margin-bottom: 6px; background: var(--card); border: 1px solid var(--border); cursor: pointer; transition: all 0.2s; }
   .standings-row:hover { border-color: var(--green-dark); }
-  .standings-row.top1 { background: var(--card); border-color: rgba(255,215,0,0.3); border-left: 4px solid var(--gold); }
-  .standings-row.top2 { background: var(--card); border-color: rgba(192,192,192,0.3); border-left: 4px solid #C0C0C0; }
+  .standings-row.top1 { border-color: rgba(255,215,0,0.3); border-left: 4px solid var(--gold); }
+  .standings-row.top2 { border-color: rgba(192,192,192,0.3); border-left: 4px solid #C0C0C0; }
   .rank { font-family: 'Bebas Neue', sans-serif; font-size: 22px; width: 26px; color: var(--text3); text-align: center; }
   .rank.gold { color: var(--gold); }
   .rank.silver { color: #C0C0C0; }
@@ -257,9 +265,6 @@ const css = `
 
   /* PAYMENT */
   .payment-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 10px; background: var(--card2); border: 1px solid var(--border); margin-bottom: 6px; }
-  .paid-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .paid-yes { background: var(--green); box-shadow: 0 0 6px var(--green); }
-  .paid-no { background: var(--red); }
 
   /* POOL */
   .pool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
@@ -270,8 +275,20 @@ const css = `
   /* CHAMPION */
   .champ-card { background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(0,200,83,0.04)); border: 1px solid rgba(255,215,0,0.25); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
 
-  /* MISC */
-  .sep { height: 1px; background: var(--border); margin: 14px 0; }
+  /* SCORING CONFIG */
+  .scoring-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .scoring-item { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
+  .scoring-label { font-size: 11px; color: var(--text3); margin-bottom: 6px; }
+  .scoring-val { display: flex; align-items: center; gap: 6px; }
+  .scoring-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg3); color: var(--text); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .scoring-num { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--green); width: 32px; text-align: center; }
+
+  /* RULES BOX */
+  .rules-box { background: linear-gradient(135deg, rgba(0,200,83,0.06), rgba(255,215,0,0.04)); border: 1px solid rgba(0,200,83,0.2); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+  .rules-title { font-family: 'Bebas Neue', sans-serif; font-size: 16px; color: var(--gold); letter-spacing: 1px; margin-bottom: 10px; }
+  .rules-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .rules-row:last-child { border-bottom: none; }
+  .rules-pts { font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: var(--green); }
 
   /* GROUP TABLE */
   .group-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 14px; overflow: hidden; }
@@ -285,16 +302,13 @@ const css = `
   .group-table tr:last-child td { border-bottom: none; }
   .group-table tr.qualified { background: rgba(0,200,83,0.06); }
   .group-table tr.qualified-3rd { background: rgba(255,215,0,0.05); }
-  .group-table tr.eliminated { opacity: 0.6; }
-  .qualify-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; flex-shrink: 0; }
+  .qualify-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
   .qualify-1st { background: var(--green); box-shadow: 0 0 4px var(--green); }
   .qualify-2nd { background: #4CAF50; }
   .qualify-3rd { background: var(--gold); }
-  .group-results { padding: 8px 12px; border-top: 1px solid var(--border); }
-  .group-result-item { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
-  .group-result-item:last-child { border-bottom: none; }
-  .result-teams { display: flex; align-items: center; gap: 4px; flex: 1; }
-  .result-score-badge { font-family: 'Bebas Neue', sans-serif; font-size: 16px; color: var(--gold); padding: 0 10px; letter-spacing: 2px; }
+
+  /* MISC */
+  .sep { height: 1px; background: var(--border); margin: 14px 0; }
   .empty { text-align: center; padding: 36px 20px; color: var(--text3); }
   .empty-icon { font-size: 44px; margin-bottom: 10px; }
   .empty-text { font-size: 13px; }
@@ -308,11 +322,17 @@ const css = `
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
   .admin-section-title { font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: var(--gold); letter-spacing: 1px; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
   .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 16px; background: var(--bg); }
-  .loading-icon { font-size: 52px; animation: spin 2s linear infinite; }
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+  /* TOURNAMENT CARD */
+  .tournament-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; }
+  .tournament-card.active-tournament { border-color: var(--green); border-left: 4px solid var(--green); }
+  .tournament-name { font-weight: 700; font-size: 15px; color: var(--text); }
+  .tournament-meta { font-size: 11px; color: var(--text3); margin-top: 3px; }
+  .active-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: rgba(0,200,83,0.15); color: var(--green); border: 1px solid rgba(0,200,83,0.3); border-radius: 20px; font-size: 10px; font-weight: 700; }
 `;
 
-// ── STEPPER ───────────────────────────────────────────────────────────────────
+// ── STEPPER ────────────────────────────────────────────────────────────────────
 function Stepper({ value, onChange, disabled }) {
   const v = parseInt(value) || 0;
   return (
@@ -324,8 +344,52 @@ function Stepper({ value, onChange, disabled }) {
   );
 }
 
-// ── STATS MODAL ───────────────────────────────────────────────────────────────
-function StatsModal({ participant, stats, onClose, matches, predictions }) {
+// ── SCORING CONFIG COMPONENT ───────────────────────────────────────────────────
+function ScoringConfig({ scoring, onChange }) {
+  const s = scoring || { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1, champion: 10 };
+  const fields = [
+    { key: "winner", label: "Acertar ganador/empate" },
+    { key: "exact", label: "Bonus marcador exacto" },
+    { key: "penalty", label: "Bonus penales exactos" },
+    { key: "wrongPenalty", label: "Ganador fue a penales" },
+    { key: "champion", label: "Polla del campeón" },
+  ];
+  return (
+    <div className="scoring-grid">
+      {fields.map(f => (
+        <div key={f.key} className="scoring-item">
+          <div className="scoring-label">{f.label}</div>
+          <div className="scoring-val">
+            <button className="scoring-btn" onClick={() => onChange({ ...s, [f.key]: Math.max(0, (s[f.key] || 0) - 1) })}>−</button>
+            <div className="scoring-num">{s[f.key] ?? 0}</div>
+            <button className="scoring-btn" onClick={() => onChange({ ...s, [f.key]: (s[f.key] || 0) + 1 })}>+</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── RULES BOX ─────────────────────────────────────────────────────────────────
+function RulesBox({ scoring, tournamentName }) {
+  const s = scoring || { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1, champion: 10 };
+  return (
+    <div className="rules-box">
+      <div className="rules-title">📋 Reglas de Puntuación{tournamentName ? ` — ${tournamentName}` : ""}</div>
+      <div className="rules-row"><span>✅ Acertar ganador o empate (90 min)</span><span className="rules-pts">{s.winner} pts</span></div>
+      <div className="rules-row"><span>🎯 Bonus: marcador exacto</span><span className="rules-pts">+{s.exact} pts</span></div>
+      <div className="rules-row"><span>⚽ Bonus: penales exactos</span><span className="rules-pts">+{s.penalty} pts</span></div>
+      <div className="rules-row"><span>🔄 Ganador acertado pero fue a penales</span><span className="rules-pts">{s.wrongPenalty} pt</span></div>
+      <div className="rules-row"><span>🏆 Polla del campeón</span><span className="rules-pts">+{s.champion} pts</span></div>
+      <div style={{ marginTop: 8, fontSize: 11, color: "var(--text3)" }}>
+        Máx partido normal: <strong>{s.winner + s.exact} pts</strong> · Con penales: <strong>{s.winner + s.exact + s.penalty} pts</strong>
+      </div>
+    </div>
+  );
+}
+
+// ── STATS MODAL ────────────────────────────────────────────────────────────────
+function StatsModal({ participant, stats, onClose, matches, predictions, scoring }) {
   const matchHistory = Object.values(matches || {})
     .filter(m => m.status === "finished")
     .sort((a, b) => new Date(b.datetime) - new Date(a.datetime))
@@ -335,7 +399,7 @@ function StatsModal({ participant, stats, onClose, matches, predictions }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <div className="avatar-lg" style={{ cursor: "default" }}>
+          <div className="avatar-lg">
             {participant.photoURL ? <img src={participant.photoURL} alt="" /> : participant.name[0].toUpperCase()}
           </div>
           <div>
@@ -344,42 +408,19 @@ function StatsModal({ participant, stats, onClose, matches, predictions }) {
           </div>
           <button className="btn btn-secondary btn-sm" style={{ marginLeft: "auto" }} onClick={onClose}>✕</button>
         </div>
-
         <div className="stat-grid">
-          <div className="stat-box">
-            <div className="stat-val">{stats.total}</div>
-            <div className="stat-lbl">PUNTOS</div>
-          </div>
-          <div className="stat-box">
-            <div className="stat-val">{stats.exact}</div>
-            <div className="stat-lbl">EXACTOS</div>
-          </div>
-          <div className="stat-box">
-            <div className="stat-val">{stats.pct}%</div>
-            <div className="stat-lbl">ACIERTOS</div>
-          </div>
-          <div className="stat-box">
-            <div className="stat-val">{stats.streak}</div>
-            <div className="stat-lbl">MEJOR RACHA</div>
-          </div>
-          <div className="stat-box">
-            <div className="stat-val">{stats.groupsPts}</div>
-            <div className="stat-lbl">PTS GRUPOS</div>
-          </div>
-          <div className="stat-box">
-            <div className="stat-val">{stats.elimPts}</div>
-            <div className="stat-lbl">PTS ELIM.</div>
-          </div>
+          <div className="stat-box"><div className="stat-val">{stats.total}</div><div className="stat-lbl">PUNTOS</div></div>
+          <div className="stat-box"><div className="stat-val">{stats.exact}</div><div className="stat-lbl">EXACTOS</div></div>
+          <div className="stat-box"><div className="stat-val">{stats.pct}%</div><div className="stat-lbl">ACIERTOS</div></div>
+          <div className="stat-box"><div className="stat-val">{stats.streak}</div><div className="stat-lbl">MEJOR RACHA</div></div>
+          <div className="stat-box"><div className="stat-val">{stats.groupsPts}</div><div className="stat-lbl">PTS GRUPOS</div></div>
+          <div className="stat-box"><div className="stat-val">{stats.elimPts}</div><div className="stat-lbl">PTS ELIM.</div></div>
         </div>
-
-        {stats.champPts > 0 && (
-          <div className="info-box">🏆 +{stats.champPts} puntos por acertar el campeón</div>
-        )}
-
-        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)", marginBottom: 8, letterSpacing: 0.5 }}>ÚLTIMOS PARTIDOS</div>
+        {stats.champPts > 0 && <div className="info-box">🏆 +{stats.champPts} puntos por acertar el campeón</div>}
+        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)", marginBottom: 8 }}>ÚLTIMOS PARTIDOS</div>
         {matchHistory.map(m => {
           const pred = predictions?.[m.id]?.[participant.id];
-          const pts = calcPoints(pred, m.result);
+          const pts = calcPoints(pred, m.result, scoring);
           return (
             <div key={m.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid var(--border)", fontSize: 13 }}>
               <div>
@@ -388,9 +429,7 @@ function StatsModal({ participant, stats, onClose, matches, predictions }) {
                   Real: {m.result.home}-{m.result.away} · Mi pred: {pred ? `${pred.home}-${pred.away}` : "Sin pred."}
                 </div>
               </div>
-              {pts !== null && (
-                <span className={`pts-badge ${pts >= 4 ? "good" : pts > 0 ? "ok" : "zero"}`}>{pts}p</span>
-              )}
+              {pts !== null && <span className={`pts-badge ${pts >= 4 ? "good" : pts > 0 ? "ok" : "zero"}`}>{pts}p</span>}
             </div>
           );
         })}
@@ -399,8 +438,8 @@ function StatsModal({ participant, stats, onClose, matches, predictions }) {
   );
 }
 
-// ── MATCH CARD ────────────────────────────────────────────────────────────────
-function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, participants }) {
+// ── MATCH CARD ─────────────────────────────────────────────────────────────────
+function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, participants, scoring }) {
   const [pred, setPred] = useState(myPred || { home: 0, away: 0 });
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(!myPred);
@@ -408,11 +447,10 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
   const finished = match.status === "finished";
   const isKnockout = match.phase !== "groups" && match.phase !== "test";
   const predDraw = parseInt(pred.home) === parseInt(pred.away);
+  const myPts = finished ? calcPoints(myPred, match.result, scoring) : null;
+  const phaseClass = match.phase === "test" ? "phase-test" : match.phase === "groups" ? "phase-groups" : "phase-knockout";
 
   useEffect(() => { setPred(myPred || { home: 0, away: 0 }); setEditing(!myPred); }, [myPred]);
-
-  const myPts = finished ? calcPoints(myPred, match.result) : null;
-  const phaseClass = match.phase === "test" ? "phase-test" : match.phase === "groups" ? "phase-groups" : "phase-knockout";
 
   return (
     <div className="match-card">
@@ -429,15 +467,15 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
       {!finished && (
         <div>
           {(editing || !myPred) && (
-          <div className="score-input-row">
-            <Stepper value={pred.home} onChange={v => setPred(p => ({ ...p, home: v }))} disabled={locked} />
-            <span className="score-dash">:</span>
-            <Stepper value={pred.away} onChange={v => setPred(p => ({ ...p, away: v }))} disabled={locked} />
-          </div>
+            <div className="score-input-row">
+              <Stepper value={pred.home} onChange={v => setPred(p => ({ ...p, home: v }))} disabled={locked} />
+              <span className="score-dash">:</span>
+              <Stepper value={pred.away} onChange={v => setPred(p => ({ ...p, away: v }))} disabled={locked} />
+            </div>
           )}
           {!editing && myPred && !locked && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, padding: "8px 0" }}>
-              <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, color: "var(--green)", letterSpacing: 4 }}>{pred.home} — {pred.away}</span>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 0" }}>
+              <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, color: "var(--green)", letterSpacing: 4 }}>{pred.home} – {pred.away}</span>
             </div>
           )}
           {isKnockout && predDraw && !locked && (
@@ -477,7 +515,7 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
           <div className="result-row">
             <div>
               <div style={{ fontSize: 10, color: "var(--text3)", marginBottom: 2 }}>Resultado oficial</div>
-              <div className="result-score">{match.result.home} — {match.result.away}</div>
+              <div className="result-score">{match.result.home} – {match.result.away}</div>
               {match.result.penalties && <div style={{ fontSize: 10, color: "var(--text3)" }}>Penales: {match.result.pensHome}-{match.result.pensAway}</div>}
             </div>
             {myPts !== null && (
@@ -492,21 +530,14 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
           {expanded && (
             <div className="reveal-grid" style={{ marginTop: 8 }}>
               {Object.entries(allPreds || {}).map(([uid, p]) => {
-                const pts = calcPoints(p, match.result);
-                const participant = participants?.find(x => x.id === uid);
+                const pts = calcPoints(p, match.result, scoring);
                 return (
                   <div key={uid} className="reveal-item">
-                    <div className="reveal-name">
-                      {participant?.photoURL && <img src={participant.photoURL} alt="" style={{ width: 16, height: 16, borderRadius: "50%", objectFit: "cover" }} />}
-                      {p.userName}
-                    </div>
+                    <div className="reveal-name">{p.userName}</div>
                     <div className="reveal-score">
                       <span>{p.home}-{p.away}</span>
                       <span className={`pts-badge ${pts >= 4 ? "good" : pts > 0 ? "ok" : "zero"}`} style={{ fontSize: 10, padding: "1px 6px" }}>{pts}p</span>
                     </div>
-                    {p.pensHome !== undefined && p.pensHome !== "" && (
-                      <div style={{ fontSize: 10, color: "var(--text3)" }}>Pen: {p.pensHome}-{p.pensAway}</div>
-                    )}
                   </div>
                 );
               })}
@@ -518,99 +549,13 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
   );
 }
 
-function EditMatch({ match, onEdit, onCorrectResult }) {
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ homeTeam: match.homeTeam, awayTeam: match.awayTeam, datetime: match.datetime, phase: match.phase });
-  const [resForm, setResForm] = useState({ home: match.result?.home || 0, away: match.result?.away || 0, penalties: match.result?.penalties || false, pensHome: match.result?.pensHome || 0, pensAway: match.result?.pensAway || 0 });
-  const [tab, setTab] = useState("info");
-  const isKnockout = match.phase !== "groups" && match.phase !== "test";
-
-  if (!open) return (
-    <button className="btn btn-secondary btn-sm" onClick={() => setOpen(true)}>✏️ Editar</button>
-  );
-
-  return (
-    <div style={{ marginTop: 8, background: "rgba(0,200,83,0.05)", border: "1px solid rgba(0,200,83,0.2)", borderRadius: 8, padding: 12 }}>
-      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-        <button className={"btn btn-sm " + (tab === "info" ? "btn-primary" : "btn-secondary")} onClick={() => setTab("info")}>📋 Datos</button>
-        <button className={"btn btn-sm " + (tab === "result" ? "btn-primary" : "btn-secondary")} onClick={() => setTab("result")}>⚽ Resultado</button>
-        <button className="btn btn-secondary btn-sm" style={{ marginLeft: "auto" }} onClick={() => setOpen(false)}>✕</button>
-      </div>
-
-      {tab === "info" && (
-        <div>
-          <div className="input-row">
-            <div className="input-group" style={{ flex: 1 }}>
-              <label className="input-label">Local</label>
-              <input className="input" value={form.homeTeam} onChange={e => setForm(f => ({ ...f, homeTeam: e.target.value }))} />
-            </div>
-            <div className="input-group" style={{ flex: 1 }}>
-              <label className="input-label">Visitante</label>
-              <input className="input" value={form.awayTeam} onChange={e => setForm(f => ({ ...f, awayTeam: e.target.value }))} />
-            </div>
-          </div>
-          <div className="input-row">
-            <div className="input-group" style={{ flex: 1 }}>
-              <label className="input-label">Fecha y hora</label>
-              <input className="input" type="datetime-local" value={form.datetime} onChange={e => setForm(f => ({ ...f, datetime: e.target.value }))} />
-            </div>
-            <div className="input-group" style={{ flex: 1 }}>
-              <label className="input-label">Fase</label>
-              <select className="input" value={form.phase} onChange={e => setForm(f => ({ ...f, phase: e.target.value }))}>
-                <option value="test">🧪 Prueba</option>
-                <option value="groups">Fase Grupos</option>
-                <option value="r16">Octavos</option>
-                <option value="qf">Cuartos</option>
-                <option value="sf">Semifinal</option>
-                <option value="final">Final</option>
-              </select>
-            </div>
-          </div>
-          <button className="btn btn-primary btn-full btn-sm" onClick={() => { onEdit(match.id, form); setOpen(false); }}>✅ Guardar cambios</button>
-        </div>
-      )}
-
-      {tab === "result" && (
-        <div>
-          <div style={{ fontSize: 12, color: "var(--gold)", marginBottom: 8, fontWeight: 600 }}>Corregir resultado</div>
-          <div className="score-input-row">
-            <Stepper value={resForm.home} onChange={v => setResForm(r => ({ ...r, home: v }))} />
-            <span className="score-dash">:</span>
-            <Stepper value={resForm.away} onChange={v => setResForm(r => ({ ...r, away: v }))} />
-          </div>
-          {isKnockout && resForm.home === resForm.away && (
-            <div style={{ marginTop: 8 }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text2)", marginBottom: 6, cursor: "pointer" }}>
-                <input type="checkbox" checked={resForm.penalties} onChange={e => setResForm(r => ({ ...r, penalties: e.target.checked }))} />
-                ¿Hubo penales?
-              </label>
-              {resForm.penalties && (
-                <div className="score-input-row">
-                  <Stepper value={resForm.pensHome} onChange={v => setResForm(r => ({ ...r, pensHome: v }))} />
-                  <span style={{ fontSize: 11, color: "var(--text3)" }}>PEN</span>
-                  <Stepper value={resForm.pensAway} onChange={v => setResForm(r => ({ ...r, pensAway: v }))} />
-                </div>
-              )}
-            </div>
-          )}
-          <button className="btn btn-gold btn-full btn-sm" style={{ marginTop: 10 }} onClick={() => { onCorrectResult(match.id, { ...resForm, status: "finished", phase: match.phase }); setOpen(false); }}>
-            ✅ Corregir resultado
-          </button>
-          <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 6 }}>⚠️ Los puntos se recalcularán automáticamente.</div>
-        </div>
-      )}
-    </div>
-  );
-}
-
+// ── ADMIN SET RESULT ───────────────────────────────────────────────────────────
 function AdminSetResult({ match, onSetResult }) {
   const [res, setRes] = useState({ home: 0, away: 0, penalties: false, pensHome: 0, pensAway: 0 });
   const [open, setOpen] = useState(false);
   const isKnockout = match.phase !== "groups" && match.phase !== "test";
 
-  if (!open) return (
-    <button className="btn btn-gold btn-sm btn-full" style={{ marginTop: 8 }} onClick={() => setOpen(true)}>⚽ Ingresar resultado</button>
-  );
+  if (!open) return <button className="btn btn-gold btn-sm btn-full" style={{ marginTop: 8 }} onClick={() => setOpen(true)}>⚽ Ingresar resultado</button>;
   return (
     <div style={{ marginTop: 8, background: "rgba(255,215,0,0.05)", border: "1px solid rgba(255,215,0,0.2)", borderRadius: 8, padding: 12 }}>
       <div style={{ fontSize: 12, color: "var(--gold)", marginBottom: 8, fontWeight: 600 }}>Resultado oficial (90 min)</div>
@@ -642,115 +587,130 @@ function AdminSetResult({ match, onSetResult }) {
   );
 }
 
-// ── GROUP STANDINGS CALCULATION ──────────────────────────────────────────────
-function calcGroupStandings(groupLetter, matches, flags) {
+// ── EDIT MATCH ─────────────────────────────────────────────────────────────────
+function EditMatch({ match, onEdit, onCorrectResult }) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ homeTeam: match.homeTeam, awayTeam: match.awayTeam, datetime: match.datetime, phase: match.phase });
+  const [resForm, setResForm] = useState({ home: match.result?.home || 0, away: match.result?.away || 0, penalties: match.result?.penalties || false, pensHome: match.result?.pensHome || 0, pensAway: match.result?.pensAway || 0 });
+  const [tab, setTab] = useState("info");
+  const isKnockout = match.phase !== "groups" && match.phase !== "test";
+
+  if (!open) return <button className="btn btn-secondary btn-sm" onClick={() => setOpen(true)}>✏️ Editar</button>;
+  return (
+    <div style={{ marginTop: 8, background: "rgba(0,200,83,0.05)", border: "1px solid rgba(0,200,83,0.2)", borderRadius: 8, padding: 12 }}>
+      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+        <button className={"btn btn-sm " + (tab === "info" ? "btn-primary" : "btn-secondary")} onClick={() => setTab("info")}>📋 Datos</button>
+        <button className={"btn btn-sm " + (tab === "result" ? "btn-primary" : "btn-secondary")} onClick={() => setTab("result")}>⚽ Resultado</button>
+        <button className="btn btn-secondary btn-sm" style={{ marginLeft: "auto" }} onClick={() => setOpen(false)}>✕</button>
+      </div>
+      {tab === "info" && (
+        <div>
+          <div className="input-row">
+            <div className="input-group" style={{ flex: 1 }}><label className="input-label">Local</label><input className="input" value={form.homeTeam} onChange={e => setForm(f => ({ ...f, homeTeam: e.target.value }))} /></div>
+            <div className="input-group" style={{ flex: 1 }}><label className="input-label">Visitante</label><input className="input" value={form.awayTeam} onChange={e => setForm(f => ({ ...f, awayTeam: e.target.value }))} /></div>
+          </div>
+          <div className="input-row">
+            <div className="input-group" style={{ flex: 1 }}><label className="input-label">Fecha y hora</label><input className="input" type="datetime-local" value={form.datetime} onChange={e => setForm(f => ({ ...f, datetime: e.target.value }))} /></div>
+            <div className="input-group" style={{ flex: 1 }}>
+              <label className="input-label">Fase</label>
+              <select className="input" value={form.phase} onChange={e => setForm(f => ({ ...f, phase: e.target.value }))}>
+                <option value="test">🧪 Prueba</option><option value="groups">Fase Grupos</option><option value="r16">Octavos</option><option value="qf">Cuartos</option><option value="sf">Semifinal</option><option value="final">Final</option>
+              </select>
+            </div>
+          </div>
+          <button className="btn btn-primary btn-full btn-sm" onClick={() => { onEdit(match.id, form); setOpen(false); }}>✅ Guardar cambios</button>
+        </div>
+      )}
+      {tab === "result" && (
+        <div>
+          <div style={{ fontSize: 12, color: "var(--gold)", marginBottom: 8, fontWeight: 600 }}>Corregir resultado</div>
+          <div className="score-input-row">
+            <Stepper value={resForm.home} onChange={v => setResForm(r => ({ ...r, home: v }))} />
+            <span className="score-dash">:</span>
+            <Stepper value={resForm.away} onChange={v => setResForm(r => ({ ...r, away: v }))} />
+          </div>
+          {isKnockout && resForm.home === resForm.away && (
+            <div style={{ marginTop: 8 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text2)", marginBottom: 6, cursor: "pointer" }}>
+                <input type="checkbox" checked={resForm.penalties} onChange={e => setResForm(r => ({ ...r, penalties: e.target.checked }))} />
+                ¿Hubo penales?
+              </label>
+              {resForm.penalties && (
+                <div className="score-input-row">
+                  <Stepper value={resForm.pensHome} onChange={v => setResForm(r => ({ ...r, pensHome: v }))} />
+                  <span style={{ fontSize: 11, color: "var(--text3)" }}>PEN</span>
+                  <Stepper value={resForm.pensAway} onChange={v => setResForm(r => ({ ...r, pensAway: v }))} />
+                </div>
+              )}
+            </div>
+          )}
+          <button className="btn btn-gold btn-full btn-sm" style={{ marginTop: 10 }} onClick={() => { onCorrectResult(match.id, { ...resForm, status: "finished", phase: match.phase }); setOpen(false); }}>✅ Corregir resultado</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── GROUP STANDINGS ────────────────────────────────────────────────────────────
+function calcGroupStandings(groupLetter, matches) {
   const groupMatches = Object.values(matches).filter(m => m.group === groupLetter && m.phase === "groups");
   const teams = {};
-
-  // Initialize teams from matches
   groupMatches.forEach(m => {
     if (!teams[m.homeTeam]) teams[m.homeTeam] = { name: m.homeTeam, pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, pts: 0 };
     if (!teams[m.awayTeam]) teams[m.awayTeam] = { name: m.awayTeam, pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, pts: 0 };
-
     if (m.status === "finished" && m.result) {
       const h = parseInt(m.result.home), a = parseInt(m.result.away);
       teams[m.homeTeam].pj++; teams[m.awayTeam].pj++;
       teams[m.homeTeam].gf += h; teams[m.homeTeam].gc += a;
       teams[m.awayTeam].gf += a; teams[m.awayTeam].gc += h;
-      if (h > a) {
-        teams[m.homeTeam].pg++; teams[m.homeTeam].pts += 3;
-        teams[m.awayTeam].pp++;
-      } else if (h < a) {
-        teams[m.awayTeam].pg++; teams[m.awayTeam].pts += 3;
-        teams[m.homeTeam].pp++;
-      } else {
-        teams[m.homeTeam].pe++; teams[m.homeTeam].pts++;
-        teams[m.awayTeam].pe++; teams[m.awayTeam].pts++;
-      }
+      if (h > a) { teams[m.homeTeam].pg++; teams[m.homeTeam].pts += 3; teams[m.awayTeam].pp++; }
+      else if (h < a) { teams[m.awayTeam].pg++; teams[m.awayTeam].pts += 3; teams[m.homeTeam].pp++; }
+      else { teams[m.homeTeam].pe++; teams[m.homeTeam].pts++; teams[m.awayTeam].pe++; teams[m.awayTeam].pts++; }
     }
   });
-
-  return Object.values(teams).sort((a, b) =>
-    b.pts - a.pts || (b.gf - b.gc) - (a.gf - a.gc) || b.gf - a.gf
-  );
+  return Object.values(teams).sort((a, b) => b.pts - a.pts || (b.gf - b.gc) - (a.gf - a.gc) || b.gf - a.gf);
 }
 
-function GroupCard({ groupLetter, matches, flags }) {
+function GroupCard({ groupLetter, matches }) {
   const [showResults, setShowResults] = useState(false);
-  const table = calcGroupStandings(groupLetter, matches, flags);
-  const groupMatches = Object.values(matches)
-    .filter(m => m.group === groupLetter && m.phase === "groups" && m.status === "finished")
-    .sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
-
-  const getQualifyClass = (idx, total) => {
-    if (idx < 2) return "qualified";
-    if (idx === 2) return "qualified-3rd";
-    return "eliminated";
-  };
-
-  const getDot = (idx) => {
-    if (idx === 0) return <span className="qualify-dot qualify-1st" />;
-    if (idx === 1) return <span className="qualify-dot qualify-2nd" />;
-    if (idx === 2) return <span className="qualify-dot qualify-3rd" />;
-    return null;
-  };
+  const table = calcGroupStandings(groupLetter, matches);
+  const groupMatches = Object.values(matches).filter(m => m.group === groupLetter && m.phase === "groups" && m.status === "finished").sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
 
   return (
     <div className="group-card">
       <div className="group-header">
         <div className="group-header-title">Grupo {groupLetter}</div>
-        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>
-          {table.filter(t => t.pj > 0).length > 0 ? `${table[0]?.pts || 0} pts líder` : "Sin partidos"}
-        </div>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>{table[0]?.pts || 0} pts líder</div>
       </div>
       <table className="group-table">
-        <thead>
-          <tr>
-            <th>Equipo</th>
-            <th>PJ</th>
-            <th>PG</th>
-            <th>PE</th>
-            <th>PP</th>
-            <th>GD</th>
-            <th>Pts</th>
-          </tr>
-        </thead>
+        <thead><tr><th>Equipo</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>GD</th><th>Pts</th></tr></thead>
         <tbody>
           {table.map((team, idx) => (
-            <tr key={team.name} className={getQualifyClass(idx, table.length)}>
+            <tr key={team.name} className={idx < 2 ? "qualified" : idx === 2 ? "qualified-3rd" : ""}>
               <td>
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  {getDot(idx)}
-                  <span>{flags[team.name] || "🏳️"}</span>
+                  {idx === 0 ? <span className="qualify-dot qualify-1st" /> : idx === 1 ? <span className="qualify-dot qualify-2nd" /> : idx === 2 ? <span className="qualify-dot qualify-3rd" /> : null}
+                  <span>{TEAM_FLAGS[team.name] || "🏳️"}</span>
                   <span style={{ fontSize: 11 }}>{team.name}</span>
                 </div>
               </td>
-              <td>{team.pj}</td>
-              <td>{team.pg}</td>
-              <td>{team.pe}</td>
-              <td>{team.pp}</td>
-              <td style={{ color: team.gf - team.gc > 0 ? "var(--green)" : team.gf - team.gc < 0 ? "var(--red)" : "var(--text3)" }}>
-                {team.gf - team.gc > 0 ? "+" : ""}{team.gf - team.gc}
-              </td>
-              <td style={{ fontWeight: 700, color: "var(--text)" }}>{team.pts}</td>
+              <td>{team.pj}</td><td>{team.pg}</td><td>{team.pe}</td><td>{team.pp}</td>
+              <td style={{ color: team.gf - team.gc > 0 ? "var(--green)" : team.gf - team.gc < 0 ? "var(--red)" : "var(--text3)" }}>{team.gf - team.gc > 0 ? "+" : ""}{team.gf - team.gc}</td>
+              <td style={{ fontWeight: 700 }}>{team.pts}</td>
             </tr>
           ))}
         </tbody>
       </table>
       {groupMatches.length > 0 && (
-        <div className="group-results">
+        <div style={{ padding: "8px 12px", borderTop: "1px solid var(--border)" }}>
           <button className="btn btn-secondary btn-sm btn-full" style={{ marginBottom: 8 }} onClick={() => setShowResults(r => !r)}>
-            {showResults ? "▲ Ocultar resultados" : `▼ Ver ${groupMatches.length} resultado${groupMatches.length > 1 ? "s" : ""}`}
+            {showResults ? "▲ Ocultar" : `▼ Ver ${groupMatches.length} resultado${groupMatches.length > 1 ? "s" : ""}`}
           </button>
           {showResults && groupMatches.map(m => (
-            <div key={m.id} className="group-result-item">
-              <div className="result-teams">
-                <span>{flags[m.homeTeam] || "🏳️"} {m.homeTeam}</span>
-              </div>
-              <div className="result-score-badge">{m.result.home} - {m.result.away}</div>
-              <div className="result-teams" style={{ justifyContent: "flex-end" }}>
-                <span>{m.awayTeam} {flags[m.awayTeam] || "🏳️"}</span>
-              </div>
+            <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 0", borderBottom: "1px solid var(--border)", fontSize: 12 }}>
+              <span>{TEAM_FLAGS[m.homeTeam] || "🏳️"} {m.homeTeam}</span>
+              <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, color: "var(--gold)", padding: "0 10px" }}>{m.result.home} - {m.result.away}</span>
+              <span>{m.awayTeam} {TEAM_FLAGS[m.awayTeam] || "🏳️"}</span>
             </div>
           ))}
         </div>
@@ -759,14 +719,14 @@ function GroupCard({ groupLetter, matches, flags }) {
   );
 }
 
-// ── PROFILE MENU ─────────────────────────────────────────────────────────────
+// ── PROFILE MENU ───────────────────────────────────────────────────────────────
 function ProfileMenu({ user, onLogout, onClose }) {
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 300 }} onClick={onClose}>
       <div style={{ position: "absolute", top: 64, right: 12, background: "var(--card)", border: "1px solid var(--border)", borderRadius: 14, padding: 16, minWidth: 200, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }} onClick={e => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid var(--border)" }}>
-          <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--gold)", color: "var(--green-deep)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 18, overflow: "hidden" }}>
-            {user.photoURL ? <img src={user.photoURL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : user.name[0].toUpperCase()}
+          <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--gold)", color: "var(--green-deep)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 18 }}>
+            {user.name[0].toUpperCase()}
           </div>
           <div>
             <div style={{ fontWeight: 700, fontSize: 15 }}>{user.name}</div>
@@ -775,7 +735,7 @@ function ProfileMenu({ user, onLogout, onClose }) {
         </div>
         {user.role !== "admin" && (
           <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid var(--border)" }}>
-            <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 8, fontWeight: 600, letterSpacing: 0.5 }}>ESTADO DE PAGO</div>
+            <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 8, fontWeight: 600 }}>ESTADO DE PAGO</div>
             <div style={{ display: "flex", gap: 6 }}>
               <div style={{ flex: 1, background: "var(--bg2)", borderRadius: 8, padding: "6px 8px", textAlign: "center" }}>
                 <div style={{ fontSize: 10, color: "var(--text3)", marginBottom: 2 }}>⚽ Grupos</div>
@@ -788,31 +748,25 @@ function ProfileMenu({ user, onLogout, onClose }) {
             </div>
           </div>
         )}
-        {user.role === "admin" && (
-          <button className="btn btn-secondary btn-full btn-sm" style={{ marginBottom: 8 }} onClick={() => { onClose(); }}>
-            👤 Ver como participante
-          </button>
-        )}
-        <button className="btn btn-danger btn-full btn-sm" onClick={() => { onLogout(); onClose(); }}>
-          🚪 Cerrar sesión
-        </button>
+        <button className="btn btn-danger btn-full btn-sm" onClick={() => { onLogout(); onClose(); }}>🚪 Cerrar sesión</button>
       </div>
     </div>
   );
 }
 
-// ── CHAMPION COMPONENT ────────────────────────────────────────────────────────
-function ChampPrediction({ userId, userName, champPredictions, tournamentWinner, onSave, matches }) {
+// ── CHAMPION PREDICTION ────────────────────────────────────────────────────────
+function ChampPrediction({ userId, champPredictions, tournamentWinner, onSave, matches, scoring }) {
   const [team, setTeam] = useState(champPredictions?.[userId]?.team || "");
   const [editing, setEditing] = useState(false);
   const myPred = champPredictions?.[userId];
   const hasStarted = Object.values(matches || {}).some(m => m.phase !== "test" && isPastDeadline(m));
+  const champPts = scoring?.champion || 10;
 
   return (
     <div className="champ-card">
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
         <div style={{ fontWeight: 700, fontSize: 13, color: "var(--gold)" }}>🏆 La Polla del Campeón</div>
-        <span style={{ fontSize: 11, color: "var(--text3)" }}>+10 pts</span>
+        <span style={{ fontSize: 11, color: "var(--text3)" }}>+{champPts} pts</span>
       </div>
       {myPred && !editing ? (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -820,14 +774,14 @@ function ChampPrediction({ userId, userName, champPredictions, tournamentWinner,
             <div style={{ fontSize: 11, color: "var(--text3)" }}>Tu predicción</div>
             <div style={{ fontWeight: 700, fontSize: 16 }}>{hasStarted ? myPred.team : "🔒 Guardada"}</div>
           </div>
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 6 }}>
             {!hasStarted && <button className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>✏️</button>}
-            {tournamentWinner && myPred.team === tournamentWinner && <span className="pts-badge good">🏆 +10 pts</span>}
+            {tournamentWinner && myPred.team === tournamentWinner && <span className="pts-badge good">🏆 +{champPts} pts</span>}
           </div>
         </div>
       ) : (
         <div>
-          <input className="input" placeholder="¿Quién ganará el Mundial?" value={team} onChange={e => setTeam(e.target.value)} style={{ marginBottom: 8 }} />
+          <input className="input" placeholder="¿Quién ganará?" value={team} onChange={e => setTeam(e.target.value)} style={{ marginBottom: 8 }} />
           <div style={{ display: "flex", gap: 6 }}>
             <button className="btn btn-gold btn-sm" style={{ flex: 1 }} onClick={() => { onSave(team); setEditing(false); }} disabled={!team.trim()}>🏆 Guardar</button>
             {editing && <button className="btn btn-secondary btn-sm" onClick={() => setEditing(false)}>Cancelar</button>}
@@ -838,7 +792,7 @@ function ChampPrediction({ userId, userName, champPredictions, tournamentWinner,
   );
 }
 
-// ── MAIN APP ──────────────────────────────────────────────────────────────────
+// ── MAIN APP ───────────────────────────────────────────────────────────────────
 export default function App() {
   const [loading, setLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(false);
@@ -854,92 +808,84 @@ export default function App() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [newMatch, setNewMatch] = useState({ homeTeam: "", awayTeam: "", datetime: "", phase: "test" });
 
-  // Firebase data
+  // Tournament state
+  const [tournaments, setTournaments] = useState({});
+  const [activeTournamentId, setActiveTournamentId] = useState(null);
+  const [newTournament, setNewTournament] = useState({ name: "", type: "champions", year: new Date().getFullYear() });
+
+  // Per-tournament Firebase data
   const [participants, setParticipants] = useState([]);
   const [matches, setMatches] = useState({});
   const [predictions, setPredictions] = useState({});
   const [champPredictions, setChampPredictions] = useState({});
-  const [settings, setSettings] = useState({ quota: 50000, currency: "COP", groupCode: genCode(), adminPassword: "admin123", tournamentWinner: "" });
+  const [settings, setSettings] = useState({ quota: 50000, currency: "COP", groupCode: genCode(), tournamentWinner: "", scoring: { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1, champion: 10 } });
   const [pools, setPools] = useState({ groups: 0, eliminations: 0 });
 
-  const showNotif = useCallback((msg, type = "success") => {
-    setNotif({ msg, type });
-    setTimeout(() => setNotif(null), 3000);
+  const showNotif = useCallback((msg) => { setNotif({ msg }); setTimeout(() => setNotif(null), 3000); }, []);
+
+  // ── Load tournaments list ──────────────────────────────────────────────────
+  useEffect(() => {
+    const unsub = onValue(dbRef(db, "tournaments"), snap => {
+      const data = snap.val() || {};
+      setTournaments(data);
+      // Auto-select active tournament
+      const active = Object.values(data).find(t => t.isActive);
+      if (active && !activeTournamentId) setActiveTournamentId(active.id);
+      else if (!activeTournamentId && Object.keys(data).length > 0) setActiveTournamentId(Object.keys(data)[0]);
+    });
+    return () => unsub();
   }, []);
 
-  // ── FIREBASE LISTENERS ────────────────────────────────────────────────────
+  // ── Load data for active tournament ───────────────────────────────────────
   useEffect(() => {
+    if (!activeTournamentId) return;
+    const path = `tournaments/${activeTournamentId}`;
     const unsubs = [];
-    unsubs.push(onValue(dbRef(db, "participants"), snap => {
+    unsubs.push(onValue(dbRef(db, `${path}/participants`), snap => {
       const data = snap.val() || {};
-      const parts = Object.values(data);
-      setParticipants(parts);
-      // Sync currentUser with latest Firebase data
+      setParticipants(Object.values(data));
       setCurrentUser(prev => {
         if (!prev || prev.role === "admin") return prev;
         const fresh = data[prev.id];
         return fresh ? { ...prev, ...fresh } : prev;
       });
     }));
-    unsubs.push(onValue(dbRef(db, "matches"), snap => setMatches(snap.val() || {})));
-    unsubs.push(onValue(dbRef(db, "predictions"), snap => setPredictions(snap.val() || {})));
-    unsubs.push(onValue(dbRef(db, "champPredictions"), snap => setChampPredictions(snap.val() || {})));
-    unsubs.push(onValue(dbRef(db, "settings"), snap => {
+    unsubs.push(onValue(dbRef(db, `${path}/matches`), snap => setMatches(snap.val() || {})));
+    unsubs.push(onValue(dbRef(db, `${path}/predictions`), snap => setPredictions(snap.val() || {})));
+    unsubs.push(onValue(dbRef(db, `${path}/champPredictions`), snap => setChampPredictions(snap.val() || {})));
+    unsubs.push(onValue(dbRef(db, `${path}/settings`), snap => {
       const s = snap.val();
       if (s) setSettings(s);
-      else {
-        fbSet(dbRef(db, "settings"), { quotaGroups: 50000, quotaElim: 50000, currency: "COP", groupCode: genCode(), adminPassword: "admin123", tournamentWinner: "" });
-      }
+      else fbSet(dbRef(db, `${path}/settings`), { quotaGroups: 50000, quotaElim: 50000, currency: "COP", groupCode: genCode(), tournamentWinner: "", scoring: { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1, champion: 10 } });
     }));
-    unsubs.push(onValue(dbRef(db, "pools"), snap => { setPools(snap.val() || { groups: 0, eliminations: 0 }); }));
-
-    // Init admin if not exists
-    onValue(dbRef(db, "participants/admin"), snap => {
-      if (!snap.val()) {
-        fbSet(dbRef(db, "participants/admin"), { id: "admin", name: "Admin", role: "admin", paid: true, active: true });
-      }
-    }, { onlyOnce: true });
-
+    unsubs.push(onValue(dbRef(db, `${path}/pools`), snap => setPools(snap.val() || { groups: 0, eliminations: 0 })));
     return () => unsubs.forEach(u => u());
-  }, []);
+  }, [activeTournamentId]);
 
-  // ── BACK NAVIGATION ──────────────────────────────────────────────────────
+  // ── Back navigation ────────────────────────────────────────────────────────
   useEffect(() => {
-    const handleBackButton = (e) => {
+    const handleBack = (e) => {
       e.preventDefault();
-      // If profile menu open, close it
       if (showProfileMenu) { setShowProfileMenu(false); return; }
-      // If stats modal open, close it
       if (selectedParticipant) { setSelectedParticipant(null); return; }
-      // If in a sub-tab of admin, go to main admin tab
       if (activeTab === "admin" && adminTab !== "matches") { setAdminTab("matches"); return; }
-      // If not on predictions (home), go to predictions
       if (activeTab !== "predictions") { setActiveTab("predictions"); return; }
-      // Otherwise let the browser handle (exit app)
     };
-    window.addEventListener("popstate", handleBackButton);
-    // Push a state so we can intercept back button
+    window.addEventListener("popstate", handleBack);
     window.history.pushState({ page: activeTab }, "");
-    return () => window.removeEventListener("popstate", handleBackButton);
+    return () => window.removeEventListener("popstate", handleBack);
   }, [activeTab, adminTab, showProfileMenu, selectedParticipant]);
 
-  // ── AUTH ──────────────────────────────────────────────────────────────────
-
-  // Listen to Firebase Auth state
+  // ── Auth ───────────────────────────────────────────────────────────────────
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Check if admin
-        const adminRef = dbRef(db, `admins/${firebaseUser.uid}`);
-        onValue(adminRef, snap => {
+        onValue(dbRef(db, `admins/${firebaseUser.uid}`), snap => {
           if (snap.val()) {
             setCurrentUser({ id: firebaseUser.uid, name: "Admin", role: "admin", email: firebaseUser.email, active: true });
-          } else {
-            // Load player data from Firebase
-            onValue(dbRef(db, `participants/${firebaseUser.uid}`), pSnap => {
-              if (pSnap.val()) {
-                setCurrentUser(pSnap.val());
-              }
+          } else if (activeTournamentId) {
+            onValue(dbRef(db, `tournaments/${activeTournamentId}/participants/${firebaseUser.uid}`), pSnap => {
+              if (pSnap.val()) setCurrentUser(pSnap.val());
             }, { onlyOnce: true });
           }
         }, { onlyOnce: true });
@@ -949,40 +895,34 @@ export default function App() {
       setLoading(false);
     });
     return () => unsub();
-  }, []);
+  }, [activeTournamentId]);
 
   async function handleRegister() {
-    const name = loginForm.name.trim();
-    const email = loginForm.email.trim();
+    const name = loginForm.name.trim(), email = loginForm.email.trim();
     if (!name) return setLoginForm(f => ({ ...f, error: "Ingresa tu nombre" }));
     if (!email) return setLoginForm(f => ({ ...f, error: "Ingresa tu correo" }));
+    if (!activeTournamentId) return setLoginForm(f => ({ ...f, error: "No hay torneo activo" }));
     if (loginForm.code !== settings.groupCode) return setLoginForm(f => ({ ...f, error: "Código incorrecto" }));
     setAuthLoading(true);
     try {
-      // Check if already registered in participants
-      const snap = await new Promise(resolve => onValue(dbRef(db, "participants"), s => resolve(s), { onlyOnce: true }));
+      const snap = await new Promise(resolve => onValue(dbRef(db, `tournaments/${activeTournamentId}/participants`), s => resolve(s), { onlyOnce: true }));
       const allUsers = snap.val() || {};
       const existing = Object.values(allUsers).find(u => u.email === email);
       if (existing) {
-        // Already registered - just sign in
         await signInWithEmailAndPassword(auth, email, existing.tempPassword);
         showNotif(`¡Bienvenido de nuevo, ${existing.name}!`);
-        setAuthLoading(false);
-        return;
+        setAuthLoading(false); return;
       }
       const tempPassword = "Polla" + Math.random().toString(36).slice(2, 8) + "!";
       const cred = await createUserWithEmailAndPassword(auth, email, tempPassword);
       await updateProfile(cred.user, { displayName: name });
       const newUser = { id: cred.user.uid, name, email, role: "player", paidGroups: false, paidElim: false, active: false, tempPassword };
-      await fbSet(dbRef(db, `participants/${cred.user.uid}`), newUser);
+      await fbSet(dbRef(db, `tournaments/${activeTournamentId}/participants/${cred.user.uid}`), newUser);
       setCurrentUser(newUser);
       showNotif(`¡Bienvenido, ${name}! Espera confirmación de pago.`);
     } catch(e) {
-      if (e.code === "auth/email-already-in-use") {
-        setLoginForm(f => ({ ...f, error: "Correo ya registrado. Toca 'Ya tengo cuenta' e ingresa tu correo." }));
-      } else {
-        setLoginForm(f => ({ ...f, error: e.message }));
-      }
+      if (e.code === "auth/email-already-in-use") setLoginForm(f => ({ ...f, error: "Correo ya registrado. Toca 'Ya tengo cuenta'." }));
+      else setLoginForm(f => ({ ...f, error: e.message }));
     }
     setAuthLoading(false);
   }
@@ -990,67 +930,97 @@ export default function App() {
   async function handleLogin() {
     const email = loginForm.email.trim();
     if (!email) return setLoginForm(f => ({ ...f, error: "Ingresa tu correo" }));
+    if (!activeTournamentId) return setLoginForm(f => ({ ...f, error: "No hay torneo activo" }));
     setAuthLoading(true);
     try {
-      const snap = await new Promise(resolve => onValue(dbRef(db, "participants"), s => resolve(s), { onlyOnce: true }));
-      const allUsers = snap.val() || {};
-      const userEntry = Object.values(allUsers).find(u => u.email === email);
-      if (!userEntry) {
-        setLoginForm(f => ({ ...f, error: "Correo no encontrado. ¿Ya te registraste?" }));
-        setAuthLoading(false);
-        return;
-      }
+      const snap = await new Promise(resolve => onValue(dbRef(db, `tournaments/${activeTournamentId}/participants`), s => resolve(s), { onlyOnce: true }));
+      const userEntry = Object.values(snap.val() || {}).find(u => u.email === email);
+      if (!userEntry) { setLoginForm(f => ({ ...f, error: "Correo no encontrado. ¿Ya te registraste?" })); setAuthLoading(false); return; }
       await signInWithEmailAndPassword(auth, email, userEntry.tempPassword);
       showNotif(`¡Bienvenido de nuevo, ${userEntry.name}!`);
     } catch(e) {
-      // If signin fails, try to re-register with existing data
       setLoginForm(f => ({ ...f, error: "Error al entrar. Intenta registrarte de nuevo." }));
     }
     setAuthLoading(false);
   }
 
   async function handleAdminLogin() {
-    const email = loginForm.adminEmail.trim();
-    const password = loginForm.password;
+    const email = loginForm.adminEmail.trim(), password = loginForm.password;
     if (!email || !password) return setLoginForm(f => ({ ...f, error: "Completa los campos" }));
     setAuthLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
       showNotif("¡Bienvenido, Admin!");
-    } catch(e) {
-      setLoginForm(f => ({ ...f, error: "Credenciales incorrectas" }));
-    }
+    } catch(e) { setLoginForm(f => ({ ...f, error: "Credenciales incorrectas" })); }
     setAuthLoading(false);
   }
 
+  async function handleLogout() { await signOut(auth); setCurrentUser(null); setActiveTab("predictions"); }
 
-  async function handleLogout() {
-    await signOut(auth);
-    setCurrentUser(null);
-    setActiveTab("predictions");
+  // ── Tournament management ──────────────────────────────────────────────────
+  function createTournament() {
+    if (!newTournament.name.trim()) return showNotif("Ingresa el nombre del torneo");
+    const id = genId();
+    const code = genCode();
+    const typeInfo = TOURNAMENT_TYPES[newTournament.type] || TOURNAMENT_TYPES.custom;
+    const tournament = {
+      id, name: newTournament.name.trim(), type: newTournament.type,
+      icon: typeInfo.icon, year: newTournament.year,
+      isActive: Object.keys(tournaments).length === 0,
+      createdAt: new Date().toISOString(),
+    };
+    fbSet(dbRef(db, `tournaments/${id}`), tournament);
+    fbSet(dbRef(db, `tournaments/${id}/settings`), {
+      quotaGroups: 50000, quotaElim: 50000, currency: "COP",
+      groupCode: code, tournamentWinner: "",
+      scoring: { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1, champion: 10 }
+    });
+    setNewTournament({ name: "", type: "champions", year: new Date().getFullYear() });
+    setActiveTournamentId(id);
+    showNotif(`✅ Torneo "${tournament.name}" creado`);
   }
 
-  // ── PHOTO UPLOAD ──────────────────────────────────────────────────────────
+  function setActiveTournament(id) {
+    // Update isActive flag
+    Object.keys(tournaments).forEach(tid => {
+      update(dbRef(db, `tournaments/${tid}`), { isActive: tid === id });
+    });
+    setActiveTournamentId(id);
+    showNotif("✅ Torneo activo actualizado");
+  }
 
-  
-  // ── PREDICTIONS ───────────────────────────────────────────────────────────
+  function deleteTournament(id) {
+    if (!window.confirm("¿Eliminar este torneo y todos sus datos?")) return;
+    remove(dbRef(db, `tournaments/${id}`));
+    if (activeTournamentId === id) {
+      const remaining = Object.keys(tournaments).filter(t => t !== id);
+      setActiveTournamentId(remaining[0] || null);
+    }
+    showNotif("Torneo eliminado");
+  }
+
+  // ── Predictions ────────────────────────────────────────────────────────────
   function savePrediction(matchId, pred) {
-    if (!currentUser?.paidGroups && !currentUser?.paidElim && currentUser?.role !== "admin") return showNotif("⚠️ Pago pendiente", "error");
-    fbSet(dbRef(db, `predictions/${matchId}/${currentUser.id}`), { ...pred, userName: currentUser.name });
+    if (!currentUser?.paidGroups && !currentUser?.paidElim && currentUser?.role !== "admin") return showNotif("⚠️ Pago pendiente");
+    if (!activeTournamentId) return;
+    fbSet(dbRef(db, `tournaments/${activeTournamentId}/predictions/${matchId}/${currentUser.id}`), { ...pred, userName: currentUser.name });
     showNotif("✅ Predicción guardada");
   }
 
   function saveChampPred(team) {
-    if (!currentUser?.paidGroups && !currentUser?.paidElim && currentUser?.role !== "admin") return showNotif("⚠️ Pago pendiente", "error");
-    fbSet(dbRef(db, `champPredictions/${currentUser.id}`), { team, userName: currentUser.name });
+    if (!currentUser?.paidGroups && !currentUser?.paidElim && currentUser?.role !== "admin") return showNotif("⚠️ Pago pendiente");
+    if (!activeTournamentId) return;
+    fbSet(dbRef(db, `tournaments/${activeTournamentId}/champPredictions/${currentUser.id}`), { team, userName: currentUser.name });
     showNotif("🏆 Predicción de campeón guardada");
   }
 
-  // ── ADMIN: MATCHES ────────────────────────────────────────────────────────
+  // ── Admin: Matches ─────────────────────────────────────────────────────────
+  function tPath(sub) { return `tournaments/${activeTournamentId}/${sub}`; }
+
   function addMatch() {
-    if (!newMatch.homeTeam || !newMatch.awayTeam || !newMatch.datetime) return showNotif("Completa todos los campos", "error");
+    if (!newMatch.homeTeam || !newMatch.awayTeam || !newMatch.datetime) return showNotif("Completa todos los campos");
     const id = genId();
-    fbSet(dbRef(db, `matches/${id}`), { ...newMatch, id, status: "upcoming", result: null });
+    fbSet(dbRef(db, `${tPath("matches")}/${id}`), { ...newMatch, id, status: "upcoming", result: null });
     setNewMatch({ homeTeam: "", awayTeam: "", datetime: "", phase: "test" });
     showNotif("⚽ Partido agregado");
   }
@@ -1059,155 +1029,111 @@ export default function App() {
     const existing = Object.values(matches);
     let added = 0;
     WC2026_MATCHES.forEach(m => {
-      if (!existing.find(e => e.id === m.id)) {
-        fbSet(dbRef(db, `matches/${m.id}`), m);
-        added++;
-      }
+      if (!existing.find(e => e.id === m.id)) { fbSet(dbRef(db, `${tPath("matches")}/${m.id}`), m); added++; }
     });
     showNotif(`✅ ${added} partidos cargados`);
   }
 
-  function enableMatchDay(dateStr) {
-    // Enable all matches on a specific date
-    const dayMatches = Object.values(matches).filter(m => {
-      const d = new Date(m.datetime);
-      const matchDate = d.toISOString().split("T")[0];
-      return matchDate === dateStr && !m.enabled;
-    });
-    dayMatches.forEach(m => {
-      update(dbRef(db, `matches/${m.id}`), { enabled: true });
-    });
-    showNotif(`✅ ${dayMatches.length} partidos habilitados para ${dateStr}`);
-  }
+  function deleteMatch(id) { remove(dbRef(db, `${tPath("matches")}/${id}`)); showNotif("Partido eliminado"); }
+  function editMatch(id, changes) { update(dbRef(db, `${tPath("matches")}/${id}`), changes); showNotif("✅ Partido actualizado"); }
+  function correctResult(matchId, res) { update(dbRef(db, `${tPath("matches")}/${matchId}`), { status: "finished", result: { ...res, status: "finished" } }); showNotif("✅ Resultado corregido"); }
+  function setResult(matchId, res) { update(dbRef(db, `${tPath("matches")}/${matchId}`), { status: "finished", result: res }); showNotif("✅ Resultado ingresado"); }
 
-  function toggleMatchEnabled(matchId, currentState) {
-    update(dbRef(db, `matches/${matchId}`), { enabled: !currentState });
-    showNotif(!currentState ? "✅ Partido habilitado" : "⏸ Partido ocultado");
-  }
-
-  function deleteMatch(id) {
-    remove(dbRef(db, `matches/${id}`));
-    showNotif("Partido eliminado");
-  }
-
-  function editMatch(id, changes) {
-    update(dbRef(db, `matches/${id}`), changes);
-    showNotif("✅ Partido actualizado");
-  }
-
-  function correctResult(matchId, res) {
-    update(dbRef(db, `matches/${matchId}`), { status: "finished", result: { ...res, status: "finished" } });
-    showNotif("✅ Resultado corregido");
-  }
-
-  function setResult(matchId, res) {
-    update(dbRef(db, `matches/${matchId}`), { status: "finished", result: res });
-    showNotif("✅ Resultado ingresado");
-  }
-
-  // ── ADMIN: PARTICIPANTS ───────────────────────────────────────────────────
-
-
-  function toggleActive(p) {
-    update(dbRef(db, `participants/${p.id}`), { active: !p.active });
-    showNotif(p.active ? "⏸ Participante suspendido" : "▶️ Participante reactivado");
-  }
+  function toggleActive(p) { update(dbRef(db, `${tPath("participants")}/${p.id}`), { active: !p.active }); showNotif(p.active ? "⏸ Participante suspendido" : "▶️ Participante reactivado"); }
 
   function togglePaidGroups(p) {
     const newPaid = !p.paidGroups;
-    update(dbRef(db, `participants/${p.id}`), { paidGroups: newPaid, active: p.paidElim || newPaid });
-    const paidGroupsCount = participants.filter(u => u.paidGroups && u.id !== p.id).length + (newPaid ? 1 : 0);
-    const paidElimCount = participants.filter(u => u.paidElim).length;
-    fbSet(dbRef(db, "pools"), {
-      groups: paidGroupsCount * (settings.quotaGroups || 50000),
-      eliminations: paidElimCount * (settings.quotaElim || 50000)
-    });
+    update(dbRef(db, `${tPath("participants")}/${p.id}`), { paidGroups: newPaid, active: p.paidElim || newPaid });
+    const pg = participants.filter(u => u.paidGroups && u.id !== p.id).length + (newPaid ? 1 : 0);
+    const pe = participants.filter(u => u.paidElim).length;
+    fbSet(dbRef(db, tPath("pools")), { groups: pg * (settings.quotaGroups || 50000), eliminations: pe * (settings.quotaElim || 50000) });
     showNotif(newPaid ? "✅ Pago Grupos confirmado" : "Pago Grupos revertido");
   }
 
   function togglePaidElim(p) {
     const newPaid = !p.paidElim;
-    update(dbRef(db, `participants/${p.id}`), { paidElim: newPaid, active: p.paidGroups || newPaid });
-    const paidGroupsCount = participants.filter(u => u.paidGroups).length;
-    const paidElimCount = participants.filter(u => u.paidElim && u.id !== p.id).length + (newPaid ? 1 : 0);
-    fbSet(dbRef(db, "pools"), {
-      groups: paidGroupsCount * (settings.quotaGroups || 50000),
-      eliminations: paidElimCount * (settings.quotaElim || 50000)
-    });
+    update(dbRef(db, `${tPath("participants")}/${p.id}`), { paidElim: newPaid, active: p.paidGroups || newPaid });
+    const pg = participants.filter(u => u.paidGroups).length;
+    const pe = participants.filter(u => u.paidElim && u.id !== p.id).length + (newPaid ? 1 : 0);
+    fbSet(dbRef(db, tPath("pools")), { groups: pg * (settings.quotaGroups || 50000), eliminations: pe * (settings.quotaElim || 50000) });
     showNotif(newPaid ? "✅ Pago Eliminatorias confirmado" : "Pago Eliminatorias revertido");
   }
 
-  function clearTestParticipants() {
-    participants.filter(p => p.role !== "admin").forEach(p => {
-      remove(dbRef(db, `participants/${p.id}`));
-    });
-    showNotif("🧹 Participantes de prueba eliminados");
+  function updateScoring(newScoring) {
+    update(dbRef(db, tPath("settings")), { scoring: newScoring });
+    showNotif("✅ Puntuación actualizada");
   }
 
   function clearTestMatches() {
     Object.values(matches).filter(m => m.phase === "test").forEach(m => {
-      remove(dbRef(db, `matches/${m.id}`));
-      remove(dbRef(db, `predictions/${m.id}`));
+      remove(dbRef(db, `${tPath("matches")}/${m.id}`));
+      remove(dbRef(db, `${tPath("predictions")}/${m.id}`));
     });
     showNotif("🧹 Partidos de prueba eliminados");
   }
 
   function regenerateCode() {
     const code = genCode();
-    update(dbRef(db, "settings"), { groupCode: code });
+    update(dbRef(db, tPath("settings")), { groupCode: code });
     showNotif(`🔑 Nuevo código: ${code}`);
   }
 
-  // ── RECALCULATE POOLS when participants or settings change
+  function enableMatchDay(dateStr) {
+    Object.values(matches).filter(m => getDateStr(m.datetime) === dateStr).forEach(m => {
+      update(dbRef(db, `${tPath("matches")}/${m.id}`), { enabled: true });
+    });
+    showNotif(`✅ Partidos habilitados`);
+  }
+
+  function toggleMatchEnabled(matchId, current) {
+    update(dbRef(db, `${tPath("matches")}/${matchId}`), { enabled: !current });
+    showNotif(!current ? "✅ Partido habilitado" : "⏸ Partido ocultado");
+  }
+
+  // ── Recalculate pools ──────────────────────────────────────────────────────
   useEffect(() => {
-    if (!participants || participants.length === 0) return;
-    try {
-      const paidGroupsCount = participants.filter(u => u && u.paidGroups).length;
-      const paidElimCount = participants.filter(u => u && u.paidElim).length;
-      const newPools = {
-        groups: paidGroupsCount * (settings.quotaGroups || 50000),
-        eliminations: paidElimCount * (settings.quotaElim || 50000)
-      };
-      setPools(newPools);
-    } catch(e) {
-      console.error("Pool calc error:", e);
-    }
+    if (!participants.length || !activeTournamentId) return;
+    const pg = participants.filter(u => u?.paidGroups).length;
+    const pe = participants.filter(u => u?.paidElim).length;
+    setPools({ groups: pg * (settings.quotaGroups || 50000), eliminations: pe * (settings.quotaElim || 50000) });
   }, [participants, settings.quotaGroups, settings.quotaElim]);
 
-  // ── STANDINGS ─────────────────────────────────────────────────────────────
+  // ── Standings with tiebreaker ──────────────────────────────────────────────
   const isAdmin = currentUser?.role === "admin";
-  const isPlayer = currentUser?.role === "player";
+  const activeTournament = tournaments[activeTournamentId];
+  const scoring = settings.scoring || { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1, champion: 10 };
 
   const standings = participants
     .filter(p => p.role !== "admin" && (p.active || p.paidGroups || p.paidElim))
-    .map(p => ({ ...p, ...computeStats(p.id, matches, predictions, champPredictions, settings.tournamentWinner) }))
-    .sort((a, b) => b.total - a.total || b.exact - a.exact || b.pct - a.pct);
+    .map(p => ({ ...p, ...computeStats(p.id, matches, predictions, champPredictions, settings.tournamentWinner, scoring) }))
+    .sort((a, b) =>
+      b.total - a.total ||           // 1. Mayor puntaje
+      b.exact - a.exact ||           // 2. Mayor exactos
+      b.wins - a.wins ||             // 3. Mayor ganadores acertados
+      a.noPred - b.noPred            // 4. Menor predicciones sin realizar
+    );
 
   const upcomingMatches = Object.values(matches).filter(m => m.status !== "finished" && (m.enabled || m.phase === "test" || isAdmin)).sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
   const finishedMatches = Object.values(matches).filter(m => m.status === "finished" && (m.enabled || m.phase === "test" || isAdmin)).sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
 
-  // ── LOADING ───────────────────────────────────────────────────────────────
+  const tournamentList = Object.values(tournaments).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) return (
     <>
       <style>{css}</style>
       <div className="loading">
-        <img 
-          src="/logo192.png" 
-          alt="Polla" 
-          style={{ width: 160, height: 160, borderRadius: "50%", border: "4px solid #FFD700", boxShadow: "0 0 40px rgba(255,215,0,0.4)", animation: "bounce 1.5s ease-in-out infinite" }}
-        />
+        <img src="/logo192.png" alt="Polla" style={{ width: 160, height: 160, borderRadius: "50%", border: "4px solid #FFD700", boxShadow: "0 0 40px rgba(255,215,0,0.4)", animation: "bounce 1.5s ease-in-out infinite" }} />
         <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, color: "#FFD700", letterSpacing: 3, marginTop: 12 }}>¡PÉGUELE A LA POLLA!</div>
-        <div style={{ color: "rgba(255,255,255,0.5)", fontFamily: "Outfit, sans-serif", fontSize: 13, letterSpacing: 2, marginTop: 4 }}>MUNDIAL 2026</div>
+        <div style={{ color: "rgba(255,255,255,0.5)", fontFamily: "Outfit, sans-serif", fontSize: 13, letterSpacing: 2, marginTop: 4 }}>CARGANDO TORNEO...</div>
         <div style={{ marginTop: 24, display: "flex", gap: 6 }}>
-          {[0,1,2].map(i => (
-            <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: "#00C853", animation: "bounce " + (0.4 + i*0.15) + "s infinite alternate" }} />
-          ))}
+          {[0,1,2].map(i => <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: "#00C853", animation: `bounce ${0.4+i*0.15}s infinite alternate` }} />)}
         </div>
       </div>
     </>
   );
 
-  // ── LOGIN ─────────────────────────────────────────────────────────────────
+  // ── Login ──────────────────────────────────────────────────────────────────
   if (!currentUser) return (
     <>
       <style>{css}</style>
@@ -1215,74 +1141,46 @@ export default function App() {
         <div className="login-screen">
           <div className="login-chicken">🐔</div>
           <div className="login-logo">¡PÉGUELE<br />A LA POLLA!</div>
-          <div className="login-slogan">¡PÉGUELE A LA POLLA! — MUNDIAL 2026</div>
+          {activeTournament && (
+            <div style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 6, background: "rgba(0,200,83,0.1)", border: "1px solid rgba(0,200,83,0.2)", borderRadius: 20, padding: "4px 14px" }}>
+              <span>{activeTournament.icon}</span>
+              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>{activeTournament.name} {activeTournament.year}</span>
+            </div>
+          )}
+          <div className="login-slogan">¡PÉGUELE A LA POLLA! — {activeTournament?.name?.toUpperCase() || "MUNDIAL 2026"}</div>
           <div className="login-card">
             <div className="login-tabs">
               <button className={`login-tab ${loginForm.mode === "register" ? "active" : ""}`} onClick={() => setLoginForm(f => ({ ...f, mode: "register" }))}>Registrarme</button>
               <button className={`login-tab ${loginForm.mode === "login" ? "active" : ""}`} onClick={() => setLoginForm(f => ({ ...f, mode: "login" }))}>Ya tengo cuenta</button>
             </div>
-
             {loginForm.mode === "register" && (
               <>
-                <div className="input-group">
-                  <label className="input-label">Tu nombre</label>
-                  <input className="input" placeholder="James Rodriguez" value={loginForm.name} onChange={e => setLoginForm(f => ({ ...f, name: e.target.value }))} />
-                </div>
-                <div className="input-group">
-                  <label className="input-label">Tu correo</label>
-                  <input className="input" type="email" placeholder="correo@ejemplo.com" value={loginForm.email} onChange={e => setLoginForm(f => ({ ...f, email: e.target.value }))} />
-                </div>
-                <div className="input-group">
-                  <label className="input-label">Código del grupo</label>
-                  <input className="input" placeholder="Pide el código a William" value={loginForm.code} onChange={e => setLoginForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} onKeyDown={e => e.key === "Enter" && handleRegister()} />
-                </div>
-                <button className="btn btn-primary btn-full" onClick={handleRegister} disabled={authLoading}>
-                  {authLoading ? "⏳ Registrando..." : "🚀 Unirme al grupo"}
-                </button>
-                <div style={{ marginTop: 10, fontSize: 12, color: "var(--text3)", textAlign: "center", lineHeight: 1.5 }}>
-                  Tu acceso se activa una vez confirmes el pago con William.
-                </div>
+                <div className="input-group"><label className="input-label">Tu nombre</label><input className="input" placeholder="James Rodriguez" value={loginForm.name} onChange={e => setLoginForm(f => ({ ...f, name: e.target.value }))} /></div>
+                <div className="input-group"><label className="input-label">Tu correo</label><input className="input" type="email" placeholder="correo@ejemplo.com" value={loginForm.email} onChange={e => setLoginForm(f => ({ ...f, email: e.target.value }))} /></div>
+                <div className="input-group"><label className="input-label">Código del grupo</label><input className="input" placeholder="Pide el código a William" value={loginForm.code} onChange={e => setLoginForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} onKeyDown={e => e.key === "Enter" && handleRegister()} /></div>
+                <button className="btn btn-primary btn-full" onClick={handleRegister} disabled={authLoading}>{authLoading ? "⏳ Registrando..." : "🚀 Unirme al grupo"}</button>
+                <div style={{ marginTop: 10, fontSize: 12, color: "var(--text3)", textAlign: "center" }}>Tu acceso se activa una vez confirmes el pago con William.</div>
               </>
             )}
-
             {loginForm.mode === "login" && (
               <>
-                <div className="input-group">
-                  <label className="input-label">Tu correo</label>
-                  <input className="input" type="email" placeholder="correo@ejemplo.com" value={loginForm.email} onChange={e => setLoginForm(f => ({ ...f, email: e.target.value }))} onKeyDown={e => e.key === "Enter" && handleLogin()} />
-                </div>
-                <button className="btn btn-primary btn-full" onClick={handleLogin} disabled={authLoading}>
-                  {authLoading ? "⏳ Buscando cuenta..." : "🔐 Entrar"}
-                </button>
+                <div className="input-group"><label className="input-label">Tu correo</label><input className="input" type="email" placeholder="correo@ejemplo.com" value={loginForm.email} onChange={e => setLoginForm(f => ({ ...f, email: e.target.value }))} onKeyDown={e => e.key === "Enter" && handleLogin()} /></div>
+                <button className="btn btn-primary btn-full" onClick={handleLogin} disabled={authLoading}>{authLoading ? "⏳ Buscando..." : "🔑 Entrar"}</button>
               </>
             )}
-
-            {loginForm.error && (
-              <div className="warning-box" style={{ marginTop: 10, marginBottom: 0 }}>{loginForm.error}</div>
-            )}
+            {loginForm.error && <div className="warning-box" style={{ marginTop: 10, marginBottom: 0 }}>{loginForm.error}</div>}
           </div>
-
-          {/* Admin access - hidden */}
           <div style={{ marginTop: 16, textAlign: "center" }}>
             <button style={{ background: "none", border: "none", color: "rgba(255,255,255,0.2)", fontSize: 11, cursor: "pointer" }} onClick={() => setLoginForm(f => ({ ...f, mode: f.mode === "admin" ? "register" : "admin" }))}>
               {loginForm.mode === "admin" ? "← Volver" : "⚙"}
             </button>
           </div>
-
           {loginForm.mode === "admin" && (
             <div className="login-card" style={{ marginTop: 12, maxWidth: 360 }}>
               <div style={{ fontSize: 13, color: "var(--text2)", marginBottom: 12, fontWeight: 600 }}>Acceso Administrador</div>
-              <div className="input-group">
-                <label className="input-label">Correo admin</label>
-                <input className="input" type="email" placeholder="admin@polla.com" value={loginForm.adminEmail} onChange={e => setLoginForm(f => ({ ...f, adminEmail: e.target.value }))} />
-              </div>
-              <div className="input-group">
-                <label className="input-label">Contraseña</label>
-                <input className="input" type="password" placeholder="••••••••" value={loginForm.password} onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))} onKeyDown={e => e.key === "Enter" && handleAdminLogin()} />
-              </div>
-              <button className="btn btn-gold btn-full" onClick={handleAdminLogin} disabled={authLoading}>
-                {authLoading ? "⏳..." : "🔐 Entrar como Admin"}
-              </button>
+              <div className="input-group"><label className="input-label">Correo admin</label><input className="input" type="email" value={loginForm.adminEmail} onChange={e => setLoginForm(f => ({ ...f, adminEmail: e.target.value }))} /></div>
+              <div className="input-group"><label className="input-label">Contraseña</label><input className="input" type="password" value={loginForm.password} onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))} onKeyDown={e => e.key === "Enter" && handleAdminLogin()} /></div>
+              <button className="btn btn-gold btn-full" onClick={handleAdminLogin} disabled={authLoading}>{authLoading ? "⏳..." : "🔑 Entrar como Admin"}</button>
             </div>
           )}
         </div>
@@ -1291,23 +1189,15 @@ export default function App() {
     </>
   );
 
-  // ── MAIN ──────────────────────────────────────────────────────────────────
+  // ── MAIN ───────────────────────────────────────────────────────────────────
   return (
     <>
       <style>{css}</style>
       <div className={darkMode ? "" : "light"}>
         {notif && <div className="notif">{notif.msg}</div>}
-        {showProfileMenu && (
-          <ProfileMenu user={currentUser} onLogout={handleLogout} onClose={() => setShowProfileMenu(false)} />
-        )}
+        {showProfileMenu && <ProfileMenu user={currentUser} onLogout={handleLogout} onClose={() => setShowProfileMenu(false)} />}
         {selectedParticipant && (
-          <StatsModal
-            participant={selectedParticipant}
-            stats={computeStats(selectedParticipant.id, matches, predictions, champPredictions, settings.tournamentWinner)}
-            matches={matches}
-            predictions={predictions}
-            onClose={() => setSelectedParticipant(null)}
-          />
+          <StatsModal participant={selectedParticipant} stats={computeStats(selectedParticipant.id, matches, predictions, champPredictions, settings.tournamentWinner, scoring)} matches={matches} predictions={predictions} scoring={scoring} onClose={() => setSelectedParticipant(null)} />
         )}
 
         <div className="app">
@@ -1315,33 +1205,39 @@ export default function App() {
           <header className="header">
             <div>
               <div className="header-title">🐔 ¡Péguele a la Polla!</div>
-              <div className="header-sub">MUNDIAL 2026</div>
+              <div className="header-sub">{activeTournament ? `${activeTournament.icon} ${activeTournament.name.toUpperCase()} ${activeTournament.year}` : "MUNDIAL 2026"}</div>
             </div>
             <div className="header-right">
               <button className="dark-toggle" onClick={() => setDarkMode(d => !d)}>{darkMode ? "☀️" : "🌙"}</button>
-              <div className="avatar" onClick={() => setShowProfileMenu(true)} title="Mi perfil">
-                {currentUser.photoURL ? <img src={currentUser.photoURL} alt="" /> : currentUser.name[0].toUpperCase()}
-              </div>
+              <div className="avatar" onClick={() => setShowProfileMenu(true)}>{currentUser.name[0].toUpperCase()}</div>
             </div>
           </header>
 
+          {/* TOURNAMENT BAR — shown when multiple tournaments exist */}
+          {tournamentList.length > 1 && (
+            <div className="tournament-bar">
+              {tournamentList.map(t => (
+                <button key={t.id} className={`tournament-chip ${activeTournamentId === t.id ? "active" : ""}`} onClick={() => setActiveTournamentId(t.id)}>
+                  <span className="t-icon">{t.icon}</span>
+                  {t.name} {t.year}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="content">
 
-            {/* ── PREDICTIONS ── */}
+            {/* PREDICTIONS */}
             {activeTab === "predictions" && (
               <div>
-                {isPlayer && !currentUser.paidGroups && !currentUser.paidElim && (
+                {!activeTournamentId && (
+                  <div className="warning-box">⚠️ No hay torneos activos. El administrador debe crear uno primero.</div>
+                )}
+                {currentUser.role === "player" && !currentUser.paidGroups && !currentUser.paidElim && (
                   <div className="warning-box">⚠️ Tu pago está pendiente. Contacta a William para activar tu cuenta.</div>
                 )}
-                {isPlayer && (
-                  <ChampPrediction
-                    userId={currentUser.id}
-                    userName={currentUser.name}
-                    champPredictions={champPredictions}
-                    tournamentWinner={settings.tournamentWinner}
-                    onSave={saveChampPred}
-                    matches={matches}
-                  />
+                {currentUser.role === "player" && (
+                  <ChampPrediction userId={currentUser.id} champPredictions={champPredictions} tournamentWinner={settings.tournamentWinner} onSave={saveChampPred} matches={matches} scoring={scoring} />
                 )}
                 <div className="tabs">
                   <button className={`tab ${predTab === "upcoming" ? "active" : ""}`} onClick={() => setPredTab("upcoming")}>Próximos ({upcomingMatches.length})</button>
@@ -1350,70 +1246,42 @@ export default function App() {
                 {predTab === "upcoming" && (
                   upcomingMatches.length === 0
                     ? <div className="empty"><div className="empty-icon">⚽</div><div className="empty-text">No hay partidos próximos</div></div>
-                    : upcomingMatches.map(m => (
-                      <MatchCard key={m.id} match={m}
-                        myPred={predictions[m.id]?.[currentUser?.id]}
-                        allPreds={predictions[m.id] || {}}
-                        onSave={savePrediction}
-                        isAdmin={isAdmin}
-                        onSetResult={setResult}
-                        participants={participants}
-                      />
-                    ))
+                    : upcomingMatches.map(m => <MatchCard key={m.id} match={m} myPred={predictions[m.id]?.[currentUser?.id]} allPreds={predictions[m.id] || {}} onSave={savePrediction} isAdmin={isAdmin} onSetResult={setResult} participants={participants} scoring={scoring} />)
                 )}
                 {predTab === "finished" && (
                   finishedMatches.length === 0
-                    ? <div className="empty"><div className="empty-icon">🏁</div><div className="empty-text">Ningún partido finalizado aún</div></div>
-                    : finishedMatches.map(m => (
-                      <MatchCard key={m.id} match={m}
-                        myPred={predictions[m.id]?.[currentUser?.id]}
-                        allPreds={predictions[m.id] || {}}
-                        onSave={savePrediction}
-                        isAdmin={isAdmin}
-                        onSetResult={setResult}
-                        participants={participants}
-                      />
-                    ))
+                    ? <div className="empty"><div className="empty-icon">🍃</div><div className="empty-text">Ningún partido finalizado aún</div></div>
+                    : finishedMatches.map(m => <MatchCard key={m.id} match={m} myPred={predictions[m.id]?.[currentUser?.id]} allPreds={predictions[m.id] || {}} onSave={savePrediction} isAdmin={isAdmin} onSetResult={setResult} participants={participants} scoring={scoring} />)
                 )}
               </div>
             )}
 
-            {/* ── GROUPS ── */}
+            {/* GROUPS */}
             {activeTab === "groups" && (
               <div>
                 <div className="section-hero">
                   <div className="hero-title">📊 Fase de Grupos</div>
-                  <div className="hero-sub">Actualizado en tiempo real</div>
+                  <div className="hero-sub">{activeTournament?.name} {activeTournament?.year} · Actualizado en tiempo real</div>
                 </div>
                 <div className="info-box" style={{ fontSize: 12 }}>
                   <span style={{ color: "var(--green)" }}>●</span> Clasificado directo &nbsp;
                   <span style={{ color: "#4CAF50" }}>●</span> 2do clasificado &nbsp;
                   <span style={{ color: "var(--gold)" }}>●</span> Posible mejor 3ro
                 </div>
-                {["A","B","C","D","E","F","G","H","I","J","K","L"].map(g => (
-                  <GroupCard key={g} groupLetter={g} matches={matches} flags={TEAM_FLAGS} />
-                ))}
+                {["A","B","C","D","E","F","G","H","I","J","K","L"].map(g => <GroupCard key={g} groupLetter={g} matches={matches} />)}
               </div>
             )}
 
-            {/* ── STANDINGS ── */}
+            {/* STANDINGS */}
             {activeTab === "standings" && (
               <div>
                 <div className="section-hero">
                   <div className="hero-title">🏆 Escalafón</div>
-                  <div className="hero-sub">Toca un nombre para ver sus estadísticas</div>
+                  <div className="hero-sub">{activeTournament?.icon} {activeTournament?.name} {activeTournament?.year} · Toca un nombre para ver estadísticas</div>
                 </div>
                 <div className="pool-grid">
-                  <div className="pool-card">
-                    <div className="pool-label">💰 POZO GRUPOS</div>
-                    <div className="pool-amount">{"$" + pools.groups.toLocaleString()}</div>
-                    <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency} · 70/30</div>
-                  </div>
-                  <div className="pool-card">
-                    <div className="pool-label">🏆 POZO ELIM.</div>
-                    <div className="pool-amount">{"$" + pools.eliminations.toLocaleString()}</div>
-                    <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency} · 70/30</div>
-                  </div>
+                  <div className="pool-card"><div className="pool-label">💰 POZO GRUPOS</div><div className="pool-amount">{"$" + pools.groups.toLocaleString()}</div><div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency} · 70/30</div></div>
+                  <div className="pool-card"><div className="pool-label">🏆 POZO ELIM.</div><div className="pool-amount">{"$" + pools.eliminations.toLocaleString()}</div><div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency} · 70/30</div></div>
                 </div>
                 <div className="tabs">
                   <button className={`tab ${standTab === "total" ? "active" : ""}`} onClick={() => setStandTab("total")}>Total</button>
@@ -1427,9 +1295,7 @@ export default function App() {
                     return (
                       <div key={p.id} className={`standings-row ${i === 0 ? "top1" : i === 1 ? "top2" : ""}`} onClick={() => setSelectedParticipant(p)}>
                         <span className={`rank ${i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : ""}`}>{i + 1}</span>
-                        <div className="avatar" style={{ width: 38, height: 38, fontSize: 14, flexShrink: 0 }}>
-                          {p.photoURL ? <img src={p.photoURL} alt="" /> : p.name[0].toUpperCase()}
-                        </div>
+                        <div className="avatar" style={{ width: 38, height: 38, fontSize: 14, flexShrink: 0 }}>{p.name[0].toUpperCase()}</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div className="standing-name" style={{ display: "flex", alignItems: "center", gap: 4 }}>
                             {p.name}
@@ -1441,54 +1307,34 @@ export default function App() {
                       </div>
                     );
                   })}
-                <div className="sep" />
-                <div className="info-box" style={{ fontSize: 12 }}>
-                  ✅ Ganador/empate = 2 pts · 🎯 Marcador exacto = +3 pts · ⚽ Penales exactos = +3 pts · 🏆 Campeón = +10 pts
-                </div>
+                <div style={{ height: 1, background: "var(--border)", margin: "14px 0" }} />
+                <RulesBox scoring={scoring} tournamentName={activeTournament?.name} />
               </div>
             )}
 
-            {/* ── PAYMENTS (ADMIN) ── */}
+            {/* PAYMENTS (ADMIN) */}
             {activeTab === "payments" && isAdmin && (
               <div>
                 <div className="section-hero">
                   <div className="hero-title">💰 Pagos</div>
-                  <div className="hero-sub">Gestión de cuotas y participantes</div>
+                  <div className="hero-sub">{activeTournament?.icon} {activeTournament?.name}</div>
                 </div>
                 <div className="card">
                   <div className="card-title">⚙️ Configuración</div>
                   <div className="input-row">
-                    <div className="input-group" style={{ flex: 1 }}>
-                      <label className="input-label">Cuota Grupos</label>
-                      <input className="input" type="number" placeholder="Ej: 50000"
-                        defaultValue={settings.quotaGroups || 50000}
-                        onBlur={e => { const v = parseInt(e.target.value); if(!isNaN(v)) update(dbRef(db, "settings"), { quotaGroups: v }); }} />
-                    </div>
-                    <div className="input-group" style={{ flex: 1 }}>
-                      <label className="input-label">Cuota Eliminatorias</label>
-                      <input className="input" type="number" placeholder="Ej: 50000"
-                        defaultValue={settings.quotaElim || 50000}
-                        onBlur={e => { const v = parseInt(e.target.value); if(!isNaN(v)) update(dbRef(db, "settings"), { quotaElim: v }); }} />
-                    </div>
+                    <div className="input-group" style={{ flex: 1 }}><label className="input-label">Cuota Grupos</label><input className="input" type="number" defaultValue={settings.quotaGroups || 50000} onBlur={e => { const v = parseInt(e.target.value); if(!isNaN(v)) update(dbRef(db, tPath("settings")), { quotaGroups: v }); }} /></div>
+                    <div className="input-group" style={{ flex: 1 }}><label className="input-label">Cuota Eliminatorias</label><input className="input" type="number" defaultValue={settings.quotaElim || 50000} onBlur={e => { const v = parseInt(e.target.value); if(!isNaN(v)) update(dbRef(db, tPath("settings")), { quotaElim: v }); }} /></div>
                   </div>
                   <div className="input-group">
                     <label className="input-label">Moneda</label>
-                    <select className="input" value={settings.currency} onChange={e => update(dbRef(db, "settings"), { currency: e.target.value })}>
+                    <select className="input" value={settings.currency} onChange={e => update(dbRef(db, tPath("settings")), { currency: e.target.value })}>
                       <option>COP</option><option>CAD</option><option>USD</option>
                     </select>
                   </div>
                 </div>
                 <div className="pool-grid">
-                  <div className="pool-card">
-                    <div className="pool-label">💰 POZO GRUPOS</div>
-                    <div className="pool-amount">{"$" + pools.groups.toLocaleString()}</div>
-                    <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>70% 1er · 30% 2do</div>
-                  </div>
-                  <div className="pool-card">
-                    <div className="pool-label">🏆 POZO ELIM.</div>
-                    <div className="pool-amount">{"$" + pools.eliminations.toLocaleString()}</div>
-                    <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>70% 1er · 30% 2do</div>
-                  </div>
+                  <div className="pool-card"><div className="pool-label">💰 POZO GRUPOS</div><div className="pool-amount">{"$" + pools.groups.toLocaleString()}</div></div>
+                  <div className="pool-card"><div className="pool-label">🏆 POZO ELIM.</div><div className="pool-amount">{"$" + pools.eliminations.toLocaleString()}</div></div>
                 </div>
                 <div className="card">
                   <div className="card-title">🔑 Código del grupo</div>
@@ -1497,43 +1343,26 @@ export default function App() {
                     <button className="btn btn-secondary btn-sm" onClick={() => { navigator.clipboard?.writeText(settings.groupCode); showNotif("📋 Código copiado"); }}>📋</button>
                     <button className="btn btn-gold btn-sm" onClick={regenerateCode}>🔄 Nuevo</button>
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--text3)" }}>Al regenerar, los que ya están adentro no se ven afectados.</div>
                 </div>
                 <div className="card">
                   <div className="card-title">👥 Participantes ({participants.filter(p => p.role !== "admin").length})</div>
                   {participants.filter(p => p.role !== "admin").map(p => (
                     <div key={p.id} style={{ background: "var(--card2)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px", marginBottom: 8 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                        <div className="avatar" style={{ width: 30, height: 30, fontSize: 12 }}>
-                          {p.photoURL ? <img src={p.photoURL} alt="" /> : p.name[0].toUpperCase()}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</div>
-                          <div style={{ fontSize: 10, color: "var(--text3)" }}>{p.active ? "Activo" : "Suspendido"}</div>
-                        </div>
-                        <button className="btn btn-secondary btn-sm" onClick={() => toggleActive(p)}>
-                          {p.active ? "⏸" : "▶️"}
-                        </button>
+                        <div className="avatar" style={{ width: 30, height: 30, fontSize: 12 }}>{p.name[0].toUpperCase()}</div>
+                        <div style={{ flex: 1 }}><div style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</div><div style={{ fontSize: 10, color: "var(--text3)" }}>{p.active ? "Activo" : "Suspendido"}</div></div>
+                        <button className="btn btn-secondary btn-sm" onClick={() => toggleActive(p)}>{p.active ? "⏸" : "▶️"}</button>
                       </div>
                       <div style={{ display: "flex", gap: 6 }}>
-                        <div style={{ flex: 1, background: "var(--bg2)", borderRadius: 8, padding: "8px 10px", border: "1px solid var(--border)" }}>
-                          <div style={{ fontSize: 10, color: "var(--text3)", marginBottom: 6 }}>⚽ Pozo Grupos</div>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <span style={{ fontSize: 11, color: p.paidGroups ? "var(--green)" : "var(--red)" }}>{p.paidGroups ? "✅ Pagó" : "⏳ Pendiente"}</span>
-                            <button className={"btn btn-sm " + (p.paidGroups ? "btn-danger" : "btn-primary")} style={{ fontSize: 11, padding: "3px 8px" }} onClick={() => togglePaidGroups(p)}>
-                              {p.paidGroups ? "Revertir" : "Confirmar"}
-                            </button>
+                        {[{ key: "paidGroups", label: "⚽ Pozo Grupos", fn: togglePaidGroups }, { key: "paidElim", label: "🏆 Pozo Elim.", fn: togglePaidElim }].map(({ key, label, fn }) => (
+                          <div key={key} style={{ flex: 1, background: "var(--bg2)", borderRadius: 8, padding: "8px 10px", border: "1px solid var(--border)" }}>
+                            <div style={{ fontSize: 10, color: "var(--text3)", marginBottom: 6 }}>{label}</div>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                              <span style={{ fontSize: 11, color: p[key] ? "var(--green)" : "var(--red)" }}>{p[key] ? "✅ Pagó" : "⏳ Pendiente"}</span>
+                              <button className={"btn btn-sm " + (p[key] ? "btn-danger" : "btn-primary")} style={{ fontSize: 11, padding: "3px 8px" }} onClick={() => fn(p)}>{p[key] ? "Revertir" : "Confirmar"}</button>
+                            </div>
                           </div>
-                        </div>
-                        <div style={{ flex: 1, background: "var(--bg2)", borderRadius: 8, padding: "8px 10px", border: "1px solid var(--border)" }}>
-                          <div style={{ fontSize: 10, color: "var(--text3)", marginBottom: 6 }}>🏆 Pozo Elim.</div>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <span style={{ fontSize: 11, color: p.paidElim ? "var(--green)" : "var(--red)" }}>{p.paidElim ? "✅ Pagó" : "⏳ Pendiente"}</span>
-                            <button className={"btn btn-sm " + (p.paidElim ? "btn-danger" : "btn-primary")} style={{ fontSize: 11, padding: "3px 8px" }} onClick={() => togglePaidElim(p)}>
-                              {p.paidElim ? "Revertir" : "Confirmar"}
-                            </button>
-                          </div>
-                        </div>
+                        ))}
                       </div>
                     </div>
                   ))}
@@ -1541,52 +1370,95 @@ export default function App() {
               </div>
             )}
 
-            {/* ── ADMIN ── */}
+            {/* ADMIN */}
             {activeTab === "admin" && isAdmin && (
               <div>
                 <div className="section-hero">
                   <div className="hero-title">⚙️ Panel Admin</div>
-                  <div className="hero-sub">Gestión de partidos y torneo</div>
+                  <div className="hero-sub">{activeTournament?.icon} {activeTournament?.name} {activeTournament?.year}</div>
                 </div>
                 <div className="tabs">
+                  <button className={`tab ${adminTab === "tournaments" ? "active" : ""}`} onClick={() => setAdminTab("tournaments")}>🏆 Torneos</button>
                   <button className={`tab ${adminTab === "matches" ? "active" : ""}`} onClick={() => setAdminTab("matches")}>Partidos</button>
-                  <button className={`tab ${adminTab === "wc" ? "active" : ""}`} onClick={() => setAdminTab("wc")}>🌍 Mundial</button>
-                  <button className={`tab ${adminTab === "test" ? "active" : ""}`} onClick={() => setAdminTab("test")}>Prueba</button>
-                  <button className={`tab ${adminTab === "champ" ? "active" : ""}`} onClick={() => setAdminTab("champ")}>Campeón 🏆</button>
+                  <button className={`tab ${adminTab === "scoring" ? "active" : ""}`} onClick={() => setAdminTab("scoring")}>Puntos</button>
+                  <button className={`tab ${adminTab === "champ" ? "active" : ""}`} onClick={() => setAdminTab("champ")}>Campeón</button>
                 </div>
 
+                {/* TOURNAMENTS TAB */}
+                {adminTab === "tournaments" && (
+                  <div>
+                    <div className="card">
+                      <div className="card-title">➕ Nuevo torneo</div>
+                      <div className="input-group">
+                        <label className="input-label">Nombre</label>
+                        <input className="input" placeholder="Ej: Champions League 2025/26" value={newTournament.name} onChange={e => setNewTournament(t => ({ ...t, name: e.target.value }))} />
+                      </div>
+                      <div className="input-row">
+                        <div className="input-group" style={{ flex: 2 }}>
+                          <label className="input-label">Tipo</label>
+                          <select className="input" value={newTournament.type} onChange={e => setNewTournament(t => ({ ...t, type: e.target.value }))}>
+                            {Object.entries(TOURNAMENT_TYPES).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
+                          </select>
+                        </div>
+                        <div className="input-group" style={{ flex: 1 }}>
+                          <label className="input-label">Año</label>
+                          <input className="input" type="number" value={newTournament.year} onChange={e => setNewTournament(t => ({ ...t, year: parseInt(e.target.value) }))} />
+                        </div>
+                      </div>
+                      <button className="btn btn-primary btn-full" onClick={createTournament}>🏆 Crear torneo</button>
+                    </div>
+
+                    <div className="admin-section-title">Torneos creados</div>
+                    {tournamentList.length === 0
+                      ? <div className="empty"><div className="empty-icon">🏆</div><div className="empty-text">No hay torneos aún. ¡Crea el primero!</div></div>
+                      : tournamentList.map(t => (
+                        <div key={t.id} className={`tournament-card ${t.isActive ? "active-tournament" : ""}`}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <span style={{ fontSize: 24 }}>{t.icon}</span>
+                              <div>
+                                <div className="tournament-name">{t.name}</div>
+                                <div className="tournament-meta">{TOURNAMENT_TYPES[t.type]?.label || t.type} · {t.year}</div>
+                              </div>
+                            </div>
+                            {t.isActive && <span className="active-pill">● ACTIVO</span>}
+                          </div>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            {!t.isActive && <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => setActiveTournament(t.id)}>✅ Activar</button>}
+                            <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => { setActiveTournamentId(t.id); setAdminTab("matches"); }}>⚽ Ver partidos</button>
+                            {!t.isActive && <button className="btn btn-danger btn-sm" onClick={() => deleteTournament(t.id)}>🗑</button>}
+                          </div>
+                        </div>
+                      ))
+                    }
+                  </div>
+                )}
+
+                {/* MATCHES TAB */}
                 {adminTab === "matches" && (
                   <div>
                     <div className="card">
                       <div className="card-title">➕ Nuevo partido</div>
                       <div className="input-row">
-                        <div className="input-group" style={{ flex: 1 }}>
-                          <label className="input-label">Local</label>
-                          <input className="input" placeholder="Equipo local" value={newMatch.homeTeam} onChange={e => setNewMatch(m => ({ ...m, homeTeam: e.target.value }))} />
-                        </div>
-                        <div className="input-group" style={{ flex: 1 }}>
-                          <label className="input-label">Visitante</label>
-                          <input className="input" placeholder="Equipo visitante" value={newMatch.awayTeam} onChange={e => setNewMatch(m => ({ ...m, awayTeam: e.target.value }))} />
-                        </div>
+                        <div className="input-group" style={{ flex: 1 }}><label className="input-label">Local</label><input className="input" placeholder="Equipo local" value={newMatch.homeTeam} onChange={e => setNewMatch(m => ({ ...m, homeTeam: e.target.value }))} /></div>
+                        <div className="input-group" style={{ flex: 1 }}><label className="input-label">Visitante</label><input className="input" placeholder="Visitante" value={newMatch.awayTeam} onChange={e => setNewMatch(m => ({ ...m, awayTeam: e.target.value }))} /></div>
                       </div>
                       <div className="input-row">
-                        <div className="input-group" style={{ flex: 1 }}>
-                          <label className="input-label">Fecha y hora</label>
-                          <input className="input" type="datetime-local" value={newMatch.datetime} onChange={e => setNewMatch(m => ({ ...m, datetime: e.target.value }))} />
-                        </div>
+                        <div className="input-group" style={{ flex: 1 }}><label className="input-label">Fecha y hora</label><input className="input" type="datetime-local" value={newMatch.datetime} onChange={e => setNewMatch(m => ({ ...m, datetime: e.target.value }))} /></div>
                         <div className="input-group" style={{ flex: 1 }}>
                           <label className="input-label">Fase</label>
                           <select className="input" value={newMatch.phase} onChange={e => setNewMatch(m => ({ ...m, phase: e.target.value }))}>
-                            <option value="test">🧪 Prueba</option>
-                            <option value="groups">Fase Grupos</option>
-                            <option value="r16">Octavos</option>
-                            <option value="qf">Cuartos</option>
-                            <option value="sf">Semifinal</option>
-                            <option value="final">Final</option>
+                            <option value="test">🧪 Prueba</option><option value="groups">Fase Grupos</option><option value="r16">Octavos</option><option value="qf">Cuartos</option><option value="sf">Semifinal</option><option value="final">Final</option>
                           </select>
                         </div>
                       </div>
                       <button className="btn btn-primary btn-full" onClick={addMatch}>⚽ Agregar partido</button>
+                    </div>
+                    {activeTournament?.type === "worldcup" && (
+                      <button className="btn btn-gold btn-full" style={{ marginBottom: 12 }} onClick={loadWorldCupMatches}>🌍 Cargar partidos Mundial 2026</button>
+                    )}
+                    <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                      <button className="btn btn-danger btn-sm" style={{ flex: 1 }} onClick={() => { if(window.confirm("¿Eliminar partidos de prueba?")) clearTestMatches(); }}>🧹 Limpiar prueba</button>
                     </div>
                     <div className="admin-section-title">Partidos programados</div>
                     {Object.values(matches).length === 0
@@ -1595,19 +1467,15 @@ export default function App() {
                         <div key={m.id} className="match-card">
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                             <div>
-                              <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)" }}>{m.homeTeam} vs {m.awayTeam}</div>
+                              <div style={{ fontWeight: 700, fontSize: 13 }}>{m.homeTeam} vs {m.awayTeam}</div>
                               <div style={{ fontSize: 11, color: "var(--text3)" }}>{fmtDate(m.datetime)} · {getPhaseLabel(m.phase)}</div>
                               <div style={{ fontSize: 11, marginTop: 2 }}>
                                 {m.status === "finished"
-                                  ? <span style={{ color: "var(--green)" }}>✅ {m.result.home}-{m.result.away}{m.result.penalties ? ` (Pen: ${m.result.pensHome}-${m.result.pensAway})` : ""}</span>
+                                  ? <span style={{ color: "var(--green)" }}>✅ {m.result.home}-{m.result.away}</span>
                                   : <span style={{ color: "var(--text3)" }}>⏳ Pendiente</span>}
                               </div>
                             </div>
-                            <div style={{ display: "flex", gap: 4 }}>
-                              {m.status !== "finished" && (
-                                <button className="btn btn-danger btn-sm" onClick={() => deleteMatch(m.id)}>🗑</button>
-                              )}
-                            </div>
+                            {m.status !== "finished" && <button className="btn btn-danger btn-sm" onClick={() => deleteMatch(m.id)}>🗑</button>}
                           </div>
                           <EditMatch match={m} onEdit={editMatch} onCorrectResult={correctResult} />
                         </div>
@@ -1615,97 +1483,28 @@ export default function App() {
                   </div>
                 )}
 
-                {adminTab === "wc" && (
+                {/* SCORING TAB */}
+                {adminTab === "scoring" && (
                   <div>
-                    <div className="info-box">
-                      🌍 <strong>Partidos del Mundial 2026:</strong> Carga todos los 72 partidos de la fase de grupos. Luego los habilitas día a día para que los participantes puedan predecir.
+                    <div className="card">
+                      <div className="card-title">🎯 Configuración de puntos</div>
+                      <div className="info-box" style={{ fontSize: 12 }}>Los cambios se aplican a todos los participantes de este torneo.</div>
+                      <ScoringConfig scoring={scoring} onChange={updateScoring} />
                     </div>
-                    <button className="btn btn-gold btn-full" style={{ marginBottom: 12 }} onClick={loadWorldCupMatches}>
-                      ⚽ Cargar 72 partidos de fase de grupos
-                    </button>
-                    <div className="admin-section-title">Habilitar por día</div>
-                    <div className="info-box" style={{ fontSize: 12 }}>
-                      Los participantes solo ven los partidos habilitados. Habilita los partidos del día siguiente para que puedan predecir con anticipación.
-                    </div>
-                    {(() => {
-                      const wcMatches = Object.values(matches).filter(m => m.phase === "groups" && m.id.startsWith("m0"));
-                      const days = [...new Set(wcMatches.map(m => getDateStr(m.datetime)))].sort();
-                      return days.map(day => {
-                        const dayMatches = wcMatches.filter(m => getDateStr(m.datetime) === day);
-                        const allEnabled = dayMatches.every(m => m.enabled);
-                        const someEnabled = dayMatches.some(m => m.enabled);
-                        return (
-                          <div key={day} style={{ background: "var(--card2)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px", marginBottom: 8 }}>
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                              <div>
-                                <div style={{ fontWeight: 600, fontSize: 13 }}>{new Date(day + "T12:00:00Z").toLocaleDateString("es-CO", { weekday: "long", day: "2-digit", month: "long" })}</div>
-                                <div style={{ fontSize: 11, color: "var(--text3)" }}>{dayMatches.length} partidos · {someEnabled ? allEnabled ? "✅ Todos habilitados" : "⚡ Parcialmente habilitado" : "🔒 Ocultos"}</div>
-                              </div>
-                              <button className={"btn btn-sm " + (allEnabled ? "btn-danger" : "btn-primary")} onClick={() => enableMatchDay(day)}>
-                                {allEnabled ? "Ocultar" : "Habilitar"}
-                              </button>
-                            </div>
-                            {dayMatches.map(m => (
-                              <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 0", borderTop: "1px solid var(--border)", fontSize: 12 }}>
-                                <span style={{ color: "var(--text2)" }}>{TEAM_FLAGS[m.homeTeam]} {m.homeTeam} vs {m.awayTeam} {TEAM_FLAGS[m.awayTeam]}</span>
-                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                  <span style={{ fontSize: 10, color: "var(--text3)" }}>{fmtDate(m.datetime)}</span>
-                                  <button className={"btn btn-sm " + (m.enabled ? "btn-danger" : "btn-secondary")} style={{ fontSize: 10, padding: "2px 6px" }} onClick={() => toggleMatchEnabled(m.id, m.enabled)}>
-                                    {m.enabled ? "✅" : "🔒"}
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        );
-                      });
-                    })()}
+                    <RulesBox scoring={scoring} tournamentName={activeTournament?.name} />
                   </div>
                 )}
 
-                {adminTab === "test" && (
-                  <div>
-                    <div className="info-box">🧪 <strong>Modo Prueba:</strong> Crea partidos con fase "Prueba" para que el grupo se familiarice con la app. Los datos de prueba no afectan el torneo real.</div>
-                    <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                      <button className="btn btn-danger btn-sm" style={{ flex: 1 }} onClick={() => { if (window.confirm("¿Eliminar todos los partidos de prueba?")) clearTestMatches(); }}>
-                        🧹 Limpiar partidos de prueba
-                      </button>
-                      <button className="btn btn-danger btn-sm" style={{ flex: 1 }} onClick={() => { if (window.confirm("¿Eliminar todos los participantes de prueba? (excepto Admin)")) clearTestParticipants(); }}>
-                        👥 Limpiar participantes
-                      </button>
-                    </div>
-                    <div className="admin-section-title">Partidos de prueba</div>
-                    {Object.values(matches).filter(m => m.phase === "test").length === 0
-                      ? <div className="empty"><div className="empty-icon">🧪</div><div className="empty-text">No hay partidos de prueba. Créalos desde "Partidos" eligiendo la fase "Prueba".</div></div>
-                      : Object.values(matches).filter(m => m.phase === "test").map(m => (
-                        <div key={m.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--border)", fontSize: 13, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <div>
-                            <strong>{m.homeTeam} vs {m.awayTeam}</strong>
-                            <span style={{ color: "var(--text3)", marginLeft: 6, fontSize: 11 }}>{fmtDate(m.datetime)}</span>
-                          </div>
-                          {m.status === "finished"
-                            ? <span style={{ color: "var(--green)", fontSize: 12 }}>✅ {m.result.home}-{m.result.away}</span>
-                            : <span style={{ color: "var(--text3)", fontSize: 12 }}>⏳</span>}
-                        </div>
-                      ))}
-                  </div>
-                )}
-
+                {/* CHAMPION TAB */}
                 {adminTab === "champ" && (
                   <div>
                     <div className="card">
-                      <div className="card-title">🔐 Cuenta de Administrador</div>
-                      <div className="info-box" style={{ fontSize: 12 }}>
-                        Para crear tu cuenta de admin, ve a Firebase Console → Authentication → Agregar usuario manualmente con tu correo y contraseña segura. Luego en Realtime Database agrega tu UID en la ruta <strong>/admins/TU_UID: true</strong>
-                      </div>
-                    </div>
-                    <div className="card">
                       <div className="card-title">🏆 La Polla del Campeón</div>
                       <div className="input-group">
-                        <label className="input-label">Equipo campeón (ingresar al finalizar el torneo)</label>
-                        <input className="input" placeholder="Ej: Colombia 🇨🇴" value={settings.tournamentWinner || ""} onChange={e => update(dbRef(db, "settings"), { tournamentWinner: e.target.value })} />
+                        <label className="input-label">Equipo campeón (ingresar al finalizar)</label>
+                        <input className="input" placeholder="Ej: Colombia 🇨🇴" value={settings.tournamentWinner || ""} onChange={e => update(dbRef(db, tPath("settings")), { tournamentWinner: e.target.value })} />
                       </div>
-                      <div style={{ fontSize: 12, color: "var(--text3)" }}>Al ingresar el campeón se calculan automáticamente los +10 pts.</div>
+                      <div style={{ fontSize: 12, color: "var(--text3)" }}>Al ingresar el campeón se calculan automáticamente los +{scoring.champion} pts.</div>
                     </div>
                     <div className="card">
                       <div className="card-title">👥 Predicciones de campeón</div>
@@ -1730,25 +1529,11 @@ export default function App() {
 
           {/* NAV */}
           <nav className="nav">
-            <button className={`nav-btn ${activeTab === "predictions" ? "active" : ""}`} onClick={() => setActiveTab("predictions")}>
-              <span className="icon">⚽</span>Partidos
-            </button>
-            <button className={`nav-btn ${activeTab === "groups" ? "active" : ""}`} onClick={() => setActiveTab("groups")}>
-              <span className="icon">📊</span>Grupos
-            </button>
-            <button className={`nav-btn ${activeTab === "standings" ? "active" : ""}`} onClick={() => setActiveTab("standings")}>
-              <span className="icon">🏆</span>Escalafón
-            </button>
-            {isAdmin && (
-              <button className={`nav-btn ${activeTab === "payments" ? "active" : ""}`} onClick={() => setActiveTab("payments")}>
-                <span className="icon">💰</span>Pagos
-              </button>
-            )}
-            {isAdmin && (
-              <button className={`nav-btn ${activeTab === "admin" ? "active" : ""}`} onClick={() => setActiveTab("admin")}>
-                <span className="icon">⚙️</span>Admin
-              </button>
-            )}
+            <button className={`nav-btn ${activeTab === "predictions" ? "active" : ""}`} onClick={() => setActiveTab("predictions")}><span className="icon">⚽</span>Partidos</button>
+            <button className={`nav-btn ${activeTab === "groups" ? "active" : ""}`} onClick={() => setActiveTab("groups")}><span className="icon">📊</span>Grupos</button>
+            <button className={`nav-btn ${activeTab === "standings" ? "active" : ""}`} onClick={() => setActiveTab("standings")}><span className="icon">🏆</span>Escalafón</button>
+            {isAdmin && <button className={`nav-btn ${activeTab === "payments" ? "active" : ""}`} onClick={() => setActiveTab("payments")}><span className="icon">💰</span>Pagos</button>}
+            {isAdmin && <button className={`nav-btn ${activeTab === "admin" ? "active" : ""}`} onClick={() => setActiveTab("admin")}><span className="icon">⚙️</span>Admin</button>}
           </nav>
         </div>
       </div>
