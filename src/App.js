@@ -16,11 +16,7 @@ function fmtDate(iso) {
   const d = new Date(iso);
   return d.toLocaleDateString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
-function getDateStr(iso) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-}
+
 function isPastDeadline(match) {
   if (!match?.datetime) return false;
   return new Date() > new Date(match.datetime);
