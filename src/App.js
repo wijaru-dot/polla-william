@@ -4,6 +4,82 @@ import { TEAM_FLAGS, WC2026_MATCHES } from "./worldcupData";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
 import { ref as dbRef, onValue, set as fbSet, update, remove } from "firebase/database";
 
+// ── LIVE SCORES API ────────────────────────────────────────────────────────────
+const FOOTBALL_API_KEY = "674b5d4740c243dca0c69f41d32d214b";
+const FOOTBALL_API_BASE = "https://api.football-data.org/v4";
+
+// Map our team names to football-data.org team names
+const TEAM_NAME_MAP = {
+  "Arsenal": "Arsenal FC",
+  "Atletico Madrid": "Atlético de Madrid",
+  "Bayern Munich": "FC Bayern München",
+  "PSG": "Paris Saint-Germain FC",
+  "Barcelona": "FC Barcelona",
+  "Real Madrid": "Real Madrid CF",
+  "Liverpool": "Liverpool FC",
+  "Chelsea": "Chelsea FC",
+  "Man City": "Manchester City FC",
+  "Inter Milan": "FC Internazionale Milano",
+  "Dortmund": "Borussia Dortmund",
+  "Juventus": "Juventus FC",
+};
+
+function normalizeTeamName(name) {
+  return TEAM_NAME_MAP[name] || name;
+}
+
+// Hook to fetch live scores for a specific match
+function useLiveScore(match) {
+  const [liveData, setLiveData] = useState(null);
+  const [isLive, setIsLive] = useState(false);
+
+  useEffect(() => {
+    if (!match?.datetime || match.status === "finished") return;
+    const matchTime = new Date(match.datetime);
+    const now = new Date();
+    const diffMs = now - matchTime;
+    const diffMins = diffMs / 60000;
+    // Only poll if match started in last 120 minutes
+    if (diffMins < 0 || diffMins > 120) return;
+
+    setIsLive(true);
+
+    async function fetchScore() {
+      try {
+        const dateStr = matchTime.toISOString().split("T")[0];
+        const res = await fetch(`${FOOTBALL_API_BASE}/matches?dateFrom=${dateStr}&dateTo=${dateStr}&competitions=CL`, {
+          headers: { "X-Auth-Token": FOOTBALL_API_KEY }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const found = data.matches?.find(m => {
+          const home = normalizeTeamName(match.homeTeam);
+          const away = normalizeTeamName(match.awayTeam);
+          return (m.homeTeam.name.includes(home.split(" ")[0]) || home.includes(m.homeTeam.shortName || "")) &&
+                 (m.awayTeam.name.includes(away.split(" ")[0]) || away.includes(m.awayTeam.shortName || ""));
+        });
+        if (found) {
+          const score = found.score;
+          setLiveData({
+            home: score.fullTime?.home ?? score.halfTime?.home ?? 0,
+            away: score.fullTime?.away ?? score.halfTime?.away ?? 0,
+            minute: found.minute || null,
+            status: found.status, // IN_PLAY, PAUSED, FINISHED, etc.
+          });
+        }
+      } catch(e) {
+        console.log("Live score fetch error:", e);
+      }
+    }
+
+    fetchScore();
+    const interval = setInterval(fetchScore, 60000); // poll every 60s
+    return () => clearInterval(interval);
+  }, [match?.id, match?.datetime, match?.status]);
+
+  return { liveData, isLive };
+}
+
 // ── UTILS ──────────────────────────────────────────────────────────────────────
 function genId() { return Math.random().toString(36).slice(2, 9); }
 function genCode() {
@@ -320,6 +396,13 @@ const css = `
   .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 16px; background: var(--bg); }
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
+  /* LIVE SCORE */
+  .live-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: rgba(255,23,68,0.15); color: var(--red); border: 1px solid rgba(255,23,68,0.3); border-radius: 20px; font-size: 10px; font-weight: 700; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+  .live-score { font-family: 'Bebas Neue', sans-serif; font-size: 36px; color: var(--red); letter-spacing: 4px; text-align: center; }
+  .live-score-card { background: rgba(255,23,68,0.05); border: 1px solid rgba(255,23,68,0.2); border-radius: 10px; padding: 10px; margin: 8px 0; text-align: center; }
+  .live-minute { font-size: 11px; color: var(--red); margin-top: 2px; }
+
   /* TOURNAMENT CARD */
   .tournament-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; }
   .tournament-card.active-tournament { border-color: var(--green); border-left: 4px solid var(--green); }
@@ -445,6 +528,7 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
   const predDraw = parseInt(pred.home) === parseInt(pred.away);
   const myPts = finished ? calcPoints(myPred, match.result, scoring) : null;
   const phaseClass = match.phase === "test" ? "phase-test" : match.phase === "groups" ? "phase-groups" : "phase-knockout";
+  const { liveData, isLive } = useLiveScore(match);
 
   useEffect(() => { setPred(myPred || { home: 0, away: 0 }); setEditing(!myPred); }, [myPred]);
 
@@ -459,6 +543,18 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
         <span className="vs">VS</span>
         <span className="team-name away">{match.awayTeam} {TEAM_FLAGS[match.awayTeam] || "🏳️"}</span>
       </div>
+
+      {/* LIVE SCORE */}
+      {isLive && liveData && !finished && (
+        <div className="live-score-card">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 4 }}>
+            <span className="live-badge">● EN VIVO</span>
+            {liveData.minute && <span className="live-minute">⏱ {liveData.minute}'</span>}
+          </div>
+          <div className="live-score">{liveData.home} – {liveData.away}</div>
+          {liveData.status === "PAUSED" && <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 2 }}>Medio tiempo</div>}
+        </div>
+      )}
 
       {!finished && (
         <div>
