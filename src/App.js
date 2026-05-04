@@ -948,7 +948,7 @@ export default function App() {
     unsubs.push(onValue(dbRef(db, `${path}/settings`), snap => {
       const s = snap.val();
       if (s) setSettings(s);
-      else fbSet(dbRef(db, `${path}/settings`), { quotaGroups: 50000, quotaElim: 50000, currency: "COP", groupCode: genCode(), tournamentWinner: "", scoring: { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1, champion: 10 } });
+      else fbSet(dbRef(db, `${path}/settings`), { quotaGroups: 50000, quotaElim: 50000, currency: "COP", groupCode: genCode(), tournamentWinner: "", scoring: { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1, champion: 10 }, prizeFirst: 70, prizeSecond: 30 });
     }));
     unsubs.push(onValue(dbRef(db, `${path}/pools`), snap => setPools(snap.val() || { groups: 0, eliminations: 0 })));
     return () => unsubs.forEach(u => u());
@@ -1065,7 +1065,8 @@ export default function App() {
     fbSet(dbRef(db, `tournaments/${id}/settings`), {
       quotaGroups: 50000, quotaElim: 50000, currency: "COP",
       groupCode: code, tournamentWinner: "",
-      scoring: { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1, champion: 10 }
+      scoring: { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1, champion: 10 },
+      prizeFirst: 70, prizeSecond: 30
     });
     setNewTournament({ name: "", type: "champions", year: new Date().getFullYear() });
     setActiveTournamentId(id);
@@ -1361,8 +1362,18 @@ export default function App() {
                   <div className="hero-sub">{activeTournament?.icon} {activeTournament?.name} {activeTournament?.year} · Toca un nombre para ver estadísticas</div>
                 </div>
                 <div className="pool-grid">
-                  <div className="pool-card"><div className="pool-label">💰 POZO GRUPOS</div><div className="pool-amount">{"$" + pools.groups.toLocaleString()}</div><div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency} · 70/30</div></div>
-                  <div className="pool-card"><div className="pool-label">🏆 POZO ELIM.</div><div className="pool-amount">{"$" + pools.eliminations.toLocaleString()}</div><div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency} · 70/30</div></div>
+                  {activeTournament?.type === "worldcup" ? (
+                    <>
+                      <div className="pool-card"><div className="pool-label">💰 POZO GRUPOS</div><div className="pool-amount">{"$" + pools.groups.toLocaleString()}</div><div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency} · {settings.prizeFirst || 70}/{settings.prizeSecond || 30}</div></div>
+                      <div className="pool-card"><div className="pool-label">🏆 POZO ELIM.</div><div className="pool-amount">{"$" + pools.eliminations.toLocaleString()}</div><div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency} · {settings.prizeFirst || 70}/{settings.prizeSecond || 30}</div></div>
+                    </>
+                  ) : (
+                    <div className="pool-card" style={{ gridColumn: "1 / -1" }}>
+                      <div className="pool-label">💰 POZO {activeTournament?.name?.toUpperCase()}</div>
+                      <div className="pool-amount">{"$" + (pools.groups + pools.eliminations).toLocaleString()}</div>
+                      <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency} · {settings.prizeFirst || 70}/{settings.prizeSecond || 30}</div>
+                    </div>
+                  )}
                 </div>
                 <div className="tabs">
                   <button className={`tab ${standTab === "total" ? "active" : ""}`} onClick={() => setStandTab("total")}>Total</button>
@@ -1414,8 +1425,31 @@ export default function App() {
                   </div>
                 </div>
                 <div className="pool-grid">
-                  <div className="pool-card"><div className="pool-label">💰 POZO GRUPOS</div><div className="pool-amount">{"$" + pools.groups.toLocaleString()}</div></div>
-                  <div className="pool-card"><div className="pool-label">🏆 POZO ELIM.</div><div className="pool-amount">{"$" + pools.eliminations.toLocaleString()}</div></div>
+                  {activeTournament?.type === "worldcup" ? (
+                    <>
+                      <div className="pool-card"><div className="pool-label">💰 POZO GRUPOS</div><div className="pool-amount">{"$" + pools.groups.toLocaleString()}</div></div>
+                      <div className="pool-card"><div className="pool-label">🏆 POZO ELIM.</div><div className="pool-amount">{"$" + pools.eliminations.toLocaleString()}</div></div>
+                    </>
+                  ) : (
+                    <div className="pool-card" style={{ gridColumn: "1 / -1" }}>
+                      <div className="pool-label">💰 POZO {activeTournament?.name?.toUpperCase()}</div>
+                      <div className="pool-amount">{"$" + (pools.groups + pools.eliminations).toLocaleString()}</div>
+                    </div>
+                  )}
+                </div>
+                <div className="card">
+                  <div className="card-title">🏆 Distribución del premio</div>
+                  <div className="input-row">
+                    <div className="input-group" style={{ flex: 1 }}>
+                      <label className="input-label">% 1er lugar</label>
+                      <input className="input" type="number" min="0" max="100" defaultValue={settings.prizeFirst || 70} onBlur={e => { const v = parseInt(e.target.value); if(!isNaN(v)) update(dbRef(db, tPath("settings")), { prizeFirst: v, prizeSecond: 100 - v }); }} />
+                    </div>
+                    <div className="input-group" style={{ flex: 1 }}>
+                      <label className="input-label">% 2do lugar</label>
+                      <input className="input" type="number" value={100 - (settings.prizeFirst || 70)} readOnly style={{ opacity: 0.6 }} />
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text3)" }}>El % del 2do lugar se calcula automáticamente.</div>
                 </div>
                 <div className="card">
                   <div className="card-title">🔑 Código del grupo</div>
