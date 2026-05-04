@@ -834,7 +834,7 @@ export default function App() {
       else if (!activeTournamentId && Object.keys(data).length > 0) setActiveTournamentId(Object.keys(data)[0]);
     });
     return () => unsub();
-  }, []);
+  }, [activeTournamentId]);
 
   // ── Load data for active tournament ───────────────────────────────────────
   useEffect(() => {
@@ -1078,25 +1078,13 @@ export default function App() {
     showNotif(`🔑 Nuevo código: ${code}`);
   }
 
-  function enableMatchDay(dateStr) {
-    Object.values(matches).filter(m => getDateStr(m.datetime) === dateStr).forEach(m => {
-      update(dbRef(db, `${tPath("matches")}/${m.id}`), { enabled: true });
-    });
-    showNotif(`✅ Partidos habilitados`);
-  }
-
-  function toggleMatchEnabled(matchId, current) {
-    update(dbRef(db, `${tPath("matches")}/${matchId}`), { enabled: !current });
-    showNotif(!current ? "✅ Partido habilitado" : "⏸ Partido ocultado");
-  }
-
   // ── Recalculate pools ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!participants.length || !activeTournamentId) return;
     const pg = participants.filter(u => u?.paidGroups).length;
     const pe = participants.filter(u => u?.paidElim).length;
     setPools({ groups: pg * (settings.quotaGroups || 50000), eliminations: pe * (settings.quotaElim || 50000) });
-  }, [participants, settings.quotaGroups, settings.quotaElim]);
+  }, [participants, settings.quotaGroups, settings.quotaElim, activeTournamentId]);
 
   // ── Standings with tiebreaker ──────────────────────────────────────────────
   const isAdmin = currentUser?.role === "admin";
