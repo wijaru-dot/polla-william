@@ -1371,7 +1371,7 @@ export default function App() {
                     <div className="pool-card" style={{ gridColumn: "1 / -1" }}>
                       <div className="pool-label">💰 POZO {activeTournament?.name?.toUpperCase()}</div>
                       <div className="pool-amount">{"$" + (pools.groups + pools.eliminations).toLocaleString()}</div>
-                      <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency} · {settings.prizeFirst || 70}/{settings.prizeSecond || 30}</div>
+                      <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency} · {settings.prizeFirst || 70}/{settings.prizeSecond ?? (100 - (settings.prizeFirst || 70))}</div>
                     </div>
                   )}
                 </div>
@@ -1446,7 +1446,7 @@ export default function App() {
                     </div>
                     <div className="input-group" style={{ flex: 1 }}>
                       <label className="input-label">% 2do lugar</label>
-                      <input className="input" type="number" value={100 - (settings.prizeFirst || 70)} readOnly style={{ opacity: 0.6 }} />
+                      <input className="input" type="number" value={settings.prizeSecond ?? (100 - (settings.prizeFirst || 70))} readOnly style={{ opacity: 0.6 }} />
                     </div>
                   </div>
                   <div style={{ fontSize: 11, color: "var(--text3)" }}>El % del 2do lugar se calcula automáticamente.</div>
