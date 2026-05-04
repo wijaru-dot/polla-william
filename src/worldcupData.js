@@ -1,4 +1,4 @@
-﻿export const TEAM_FLAGS = {
+export const TEAM_FLAGS = {
   "Arsenal": "🔴", "Atletico Madrid": "🔴🔵", "Bayern Munich": "🔴⚪", "PSG": "🔵🔴",
   "MÃ©xico": "ðŸ‡²ðŸ‡½", "Corea del Sur": "ðŸ‡°ðŸ‡·", "SudÃ¡frica": "ðŸ‡¿ðŸ‡¦", "RepÃºblica Checa": "ðŸ‡¨ðŸ‡¿",
   "CanadÃ¡": "ðŸ‡¨ðŸ‡¦", "Suiza": "ðŸ‡¨ðŸ‡­", "Qatar": "ðŸ‡¶ðŸ‡¦", "Bosnia y Herzegovina": "ðŸ‡§ðŸ‡¦",
