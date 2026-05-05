@@ -689,7 +689,10 @@ function EditMatch({ match, onEdit, onCorrectResult }) {
               </select>
             </div>
           </div>
-          <button className="btn btn-primary btn-full btn-sm" onClick={() => { onEdit(match.id, form); setOpen(false); }}>✅ Guardar cambios</button>
+          <button className="btn btn-primary btn-full btn-sm" onClick={() => { 
+            const utcForm = { ...form, datetime: new Date(form.datetime).toISOString() };
+            onEdit(match.id, utcForm); setOpen(false); 
+          }}>✅ Guardar cambios</button>
         </div>
       )}
       {tab === "result" && (
@@ -1092,7 +1095,9 @@ export default function App() {
   function addMatch() {
     if (!newMatch.homeTeam || !newMatch.awayTeam || !newMatch.datetime) return showNotif("Completa todos los campos");
     const id = genId();
-    fbSet(dbRef(db, `${tPath("matches")}/${id}`), { ...newMatch, id, status: "upcoming", result: null });
+    // Convert local datetime to UTC ISO string
+    const utcDatetime = new Date(newMatch.datetime).toISOString();
+    fbSet(dbRef(db, `${tPath("matches")}/${id}`), { ...newMatch, datetime: utcDatetime, id, status: "upcoming", result: null });
     setNewMatch({ homeTeam: "", awayTeam: "", datetime: "", phase: "test" });
     showNotif("⚽ Partido agregado");
   }
