@@ -117,8 +117,8 @@ function calcPoints(pred, result, scoring) {
     } else {
       const realET_Home = parseInt(result.etHome ?? result.home);
       const realET_Away = parseInt(result.etAway ?? result.away);
-      const realETWinner = realET_Home > realET_Away ? "home" : "away";
-      if (predWinner === "draw") pts += s.winner;
+      const realETWinner = realET_Home > realET_Away ? "home" : realET_Home < realET_Away ? "away" : "draw";
+      if (predWinner === "draw" && realETWinner === "draw") pts += s.winner;
       if (predWinner !== "draw" && predWinner === realETWinner) pts += s.winner;
       if (pHome === realET_Home && pAway === realET_Away) pts += s.exact;
     }
