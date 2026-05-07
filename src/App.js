@@ -382,6 +382,15 @@ const css = `
   .live-score-card { background: rgba(255,23,68,0.05); border: 1px solid rgba(255,23,68,0.2); border-radius: 10px; padding: 10px; margin: 8px 0; text-align: center; }
   .live-minute { font-size: 11px; color: var(--red); margin-top: 2px; }
 
+  /* COUNTDOWN BANNER */
+  .countdown-banner { background: linear-gradient(135deg, #004D20, #1B5E20); border-bottom: 2px solid var(--gold); padding: 8px 16px; display: flex; align-items: center; justify-content: center; gap: 10px; position: sticky; top: 64px; z-index: 99; }
+  .countdown-banner.match-day { background: linear-gradient(135deg, #B8860B, #FFD700); }
+  .countdown-days { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: var(--gold); letter-spacing: 2px; line-height: 1; }
+  .countdown-banner.match-day .countdown-days { color: var(--green-deep); }
+  .countdown-label { font-size: 11px; color: rgba(255,255,255,0.8); letter-spacing: 1px; text-align: center; line-height: 1.3; }
+  .countdown-banner.match-day .countdown-label { color: var(--green-deep); font-weight: 700; }
+  .countdown-icon { font-size: 20px; }
+
   /* TOURNAMENT CARD */
   .tournament-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; }
   .tournament-card.active-tournament { border-color: var(--green); border-left: 4px solid var(--green); }
@@ -389,6 +398,40 @@ const css = `
   .tournament-meta { font-size: 11px; color: var(--text3); margin-top: 3px; }
   .active-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: rgba(0,200,83,0.15); color: var(--green); border: 1px solid rgba(0,200,83,0.3); border-radius: 20px; font-size: 10px; font-weight: 700; }
 `;
+
+// ── COUNTDOWN BANNER ──────────────────────────────────────────────────────────
+function CountdownBanner() {
+  const WC_START = new Date("2026-06-11T00:00:00");
+  const now = new Date();
+  const diffMs = WC_START - now;
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) return null; // After World Cup started, hide banner
+
+  if (diffDays === 0) {
+    return (
+      <div className="countdown-banner match-day">
+        <span className="countdown-icon">🌍</span>
+        <div style={{ textAlign: "center" }}>
+          <div className="countdown-days">¡HOY ES EL DÍA!</div>
+          <div className="countdown-label">¡EL MUNDIAL 2026 COMIENZA AHORA! ⚽🏆</div>
+        </div>
+        <span className="countdown-icon">🏆</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="countdown-banner">
+      <span className="countdown-icon">⚽</span>
+      <div style={{ textAlign: "center" }}>
+        <div className="countdown-days">{diffDays} DÍAS</div>
+        <div className="countdown-label">PARA EL MUNDIAL 2026 🌍</div>
+      </div>
+      <span className="countdown-icon">🌍</span>
+    </div>
+  );
+}
 
 // ── STEPPER ────────────────────────────────────────────────────────────────────
 function Stepper({ value, onChange, disabled }) {
@@ -1290,6 +1333,9 @@ export default function App() {
               ))}
             </div>
           )}
+
+          {/* COUNTDOWN BANNER */}
+          <CountdownBanner />
 
           <div className="content">
 
