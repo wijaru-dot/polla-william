@@ -982,9 +982,6 @@ export default function App() {
   const [selectedParticipant, setSelectedParticipant] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showAvatarSelector, setShowAvatarSelector] = useState(false);
- 
-  }
- 
   const [newMatch, setNewMatch] = useState({ homeTeam: "", awayTeam: "", datetime: "", phase: "test" });
 
   // Tournament state
@@ -1761,3 +1758,4 @@ export default function App() {
       </div>
     </>
   );
+}
