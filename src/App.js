@@ -435,6 +435,31 @@ const css = `
 `;
 
 // â”€â”€ COUNTDOWN BANNER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function SelectorAvatar({ avatarActual, onSeleccionar, onCerrar }) {
+  const [seleccionado, setSeleccionado] = useState(avatarActual || null);
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.88)', zIndex:500, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }} onClick={onCerrar}>
+      <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:20, padding:20, width:'100%', maxWidth:420, maxHeight:'85vh', display:'flex', flexDirection:'column', gap:14 }} onClick={e => e.stopPropagation()}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:20, color:'var(--gold)' }}>Elige tu jugador</div>
+          <button onClick={onCerrar} style={{ background:'none', border:'none', color:'var(--text3)', fontSize:20, cursor:'pointer' }}>X</button>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, overflowY:'auto' }}>
+          {AVATARES.map(av => (
+            <div key={av.id} onClick={() => setSeleccionado(av.id)} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, cursor:'pointer', padding:'8px 4px', borderRadius:10, border: seleccionado===av.id ? '2px solid var(--gold)' : '2px solid transparent', background: seleccionado===av.id ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.04)' }}>
+              <img src={'/avatars/'+av.archivo} alt={av.nombre} style={{ width:60, height:60, borderRadius:'50%', objectFit:'contain', background:'rgba(255,255,255,0.07)' }} />
+              <span style={{ fontSize:9, color:'var(--text2)', textAlign:'center' }}>{av.nombre}</span>
+            </div>
+          ))}
+        </div>
+        <button disabled={!seleccionado} onClick={() => seleccionado && onSeleccionar(seleccionado)} style={{ padding:12, borderRadius:10, border:'none', fontWeight:700, fontSize:14, cursor: seleccionado?'pointer':'not-allowed', background: seleccionado?'var(--gold)':'var(--card2)', color: seleccionado?'var(--green-deep)':'var(--text3)', width:'100%' }}>
+          {seleccionado ? 'Confirmar - '+AVATARES.find(a=>a.id===seleccionado)?.nombre : 'Selecciona un jugador'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function CountdownBanner() {
   const WC_START = new Date("2026-06-11T00:00:00");
   const now = new Date();
@@ -1733,6 +1758,7 @@ export default function App() {
     </>
   );
 }
+
 
 
 
