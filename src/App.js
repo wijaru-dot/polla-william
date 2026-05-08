@@ -7,6 +7,40 @@ import { ref as dbRef, onValue, set as fbSet, update, remove } from "firebase/da
 // ── LIVE SCORES API ────────────────────────────────────────────────────────────
 const APIFOOTBALL_KEY = "bfc394917e14e28073b971110edeece5";
 const APIFOOTBALL_BASE = "https://v3.football.api-sports.io";
+// -- AVATARES
+const AVATARES = [
+  { id: "Beckand", nombre: "Beckham", archivo: "Beckand.jpeg" },
+  { id: "Cristiano", nombre: "Cristiano", archivo: "Cristiano.jpeg" },
+  { id: "Cruyff", nombre: "Cruyff", archivo: "Cruyff.png" },
+  { id: "Edgar_Davids", nombre: "Edgar Davids", archivo: "Edgar Davids.jpeg" },
+  { id: "Falcao", nombre: "Falcao", archivo: "Falcao.jpeg" },
+  { id: "Figo", nombre: "Figo", archivo: "Figo.png" },
+  { id: "Gullit", nombre: "Gullit", archivo: "Gullit.png" },
+  { id: "Higuita", nombre: "Higuita", archivo: "Higuita.jpeg" },
+  { id: "Iniesta", nombre: "Iniesta", archivo: "Iniesta.jpeg" },
+  { id: "James", nombre: "James", archivo: "James.png" },
+  { id: "Linda", nombre: "Linda Cancedo", archivo: "Linda.png" },
+  { id: "Lucho", nombre: "Lucho Diaz", archivo: "Lucho.jpeg" },
+  { id: "Luis_Suarez", nombre: "Luis Suarez", archivo: "Luis Suarez.jpeg" },
+  { id: "Marta", nombre: "Marta", archivo: "Marta.png" },
+  { id: "Messi", nombre: "Messi", archivo: "Messi.jpeg" },
+  { id: "Neymar", nombre: "Neymar", archivo: "Neymar.jpeg" },
+  { id: "Pele", nombre: "Pele", archivo: "Pele.jpeg" },
+  { id: "Pibe", nombre: "El Pibe", archivo: "Pibe.jpeg" },
+  { id: "Puyol", nombre: "Puyol", archivo: "Puyol.jpeg" },
+  { id: "Richard", nombre: "Richard Rios", archivo: "Richard.png" },
+  { id: "Rivaldo", nombre: "Rivaldo", archivo: "Rivaldo.png" },
+  { id: "Roberto_Carlos", nombre: "Roberto Carlos", archivo: "Roberto_Carlos.png" },
+  { id: "Ronaldinho", nombre: "Ronaldinho", archivo: "Ronaldinho.png" },
+  { id: "Ronaldo", nombre: "Ronaldo", archivo: "Ronaldo.png" },
+  { id: "Thierry", nombre: "Thierry Henry", archivo: "Thierrry.jpeg" },
+  { id: "Tino", nombre: "Tino Asprilla", archivo: "Tino.jpeg" },
+  { id: "Zidane", nombre: "Zidane", archivo: "Zidane.jpeg" },
+];
+function getAvatarUrl(avatarId) {
+  const av = AVATARES.find(a => a.id === avatarId);
+  return av ? '/avatars/' + av.archivo : null;
+}
 
 function useLiveScore(match) {
   const [liveData, setLiveData] = useState(null);
@@ -400,6 +434,30 @@ const css = `
 `;
 
 // ── COUNTDOWN BANNER ──────────────────────────────────────────────────────────
+function SelectorAvatar({ avatarActual, onSeleccionar, onCerrar }) {
+  const [seleccionado, setSeleccionado] = useState(avatarActual || null);
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.88)', zIndex:500, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }} onClick={onCerrar}>
+      <div style={{ background:'var(--card)', border:'1px solid var(--border)', borderRadius:20, padding:20, width:'100%', maxWidth:420, maxHeight:'85vh', display:'flex', flexDirection:'column', gap:14 }} onClick={e => e.stopPropagation()}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div style={{ fontSize:18, fontWeight:700, color:'var(--gold)' }}>Elige tu jugador</div>
+          <button onClick={onCerrar} style={{ background:'none', border:'none', color:'var(--text3)', fontSize:20, cursor:'pointer' }}>X</button>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, overflowY:'auto' }}>
+          {AVATARES.map(av => (
+            <div key={av.id} onClick={() => setSeleccionado(av.id)} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, cursor:'pointer', padding:'8px 4px', borderRadius:10, border: seleccionado===av.id ? '2px solid var(--gold)' : '2px solid transparent', background: seleccionado===av.id ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.04)' }}>
+              <img src={'/avatars/'+av.archivo} alt={av.nombre} style={{ width:60, height:60, borderRadius:'50%', objectFit:'contain', background:'rgba(255,255,255,0.07)' }} />
+              <span style={{ fontSize:9, color:'var(--text2)', textAlign:'center' }}>{av.nombre}</span>
+            </div>
+          ))}
+        </div>
+        <button disabled={!seleccionado} onClick={() => seleccionado && onSeleccionar(seleccionado)} style={{ padding:12, borderRadius:10, border:'none', fontWeight:700, fontSize:14, cursor: seleccionado?'pointer':'not-allowed', background: seleccionado?'var(--gold)':'var(--card2)', color: seleccionado?'var(--green-deep)':'var(--text3)', width:'100%' }}>
+          {seleccionado ? 'Confirmar - '+AVATARES.find(a=>a.id===seleccionado)?.nombre : 'Selecciona un jugador'}
+        </button>
+      </div>
+    </div>
+  );
+}
 function CountdownBanner() {
   const WC_START = new Date("2026-06-11T00:00:00");
   const now = new Date();
@@ -923,6 +981,7 @@ export default function App() {
   const [notif, setNotif] = useState(null);
   const [selectedParticipant, setSelectedParticipant] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showAvatarSelector, setShowAvatarSelector] = useState(false);
   const [newMatch, setNewMatch] = useState({ homeTeam: "", awayTeam: "", datetime: "", phase: "test" });
 
   // Tournament state
@@ -1072,7 +1131,15 @@ export default function App() {
     setAuthLoading(false);
   }
 
-  async function handleLogout() { await signOut(auth); setCurrentUser(null); setActiveTab("predictions"); }
+  async function guardarAvatar(avatarId) {
+    if (!currentUser || !activeTournamentId) return;
+    try {
+      await update(dbRef(db, 'tournaments/'+activeTournamentId+'/participants/'+currentUser.id), { avatar: avatarId });
+      setCurrentUser(prev => ({ ...prev, avatar: avatarId }));
+      setShowAvatarSelector(false);
+      showNotif('Avatar actualizado');
+    } catch(e) { showNotif('Error guardando avatar'); }
+  }async function handleLogout() { await signOut(auth); setCurrentUser(null); setActiveTab("predictions"); }
 
   // ── Tournament management ──────────────────────────────────────────────────
   function createTournament() {
@@ -1304,7 +1371,8 @@ export default function App() {
       <style>{css}</style>
       <div className={darkMode ? "" : "light"}>
         {notif && <div className="notif">{notif.msg}</div>}
-        {showProfileMenu && <ProfileMenu user={currentUser} onLogout={handleLogout} onClose={() => setShowProfileMenu(false)} />}
+        {showProfileMenu && <ProfileMenu user={currentUser} onLogout={handleLogout} onClose={() => setShowProfileMenu(false)} />
+        {showAvatarSelector && currentUser?.role !== 'admin' && (<SelectorAvatar avatarActual={currentUser?.avatar} onSeleccionar={guardarAvatar} onCerrar={() => setShowAvatarSelector(false)} />)}}
         {selectedParticipant && (
           <StatsModal participant={selectedParticipant} stats={computeStats(selectedParticipant.id, matches, predictions, champPredictions, settings.tournamentWinner, scoring)} matches={matches} predictions={predictions} scoring={scoring} onClose={() => setSelectedParticipant(null)} />
         )}
@@ -1318,7 +1386,7 @@ export default function App() {
             </div>
             <div className="header-right">
               <button className="dark-toggle" onClick={() => setDarkMode(d => !d)}>{darkMode ? "☀️" : "🌙"}</button>
-              <div className="avatar" onClick={() => setShowProfileMenu(true)}>{currentUser.name[0].toUpperCase()}</div>
+              <div className='avatar' onClick={() => setShowProfileMenu(true)}>{currentUser.avatar ? <img src={getAvatarUrl(currentUser.avatar)} alt='' style={{width:'100%',height:'100%',objectFit:'contain'}} /> : currentUser.name[0].toUpperCase()}</div>
             </div>
           </header>
 
@@ -1417,7 +1485,7 @@ export default function App() {
                     return (
                       <div key={p.id} className={`standings-row ${i === 0 ? "top1" : i === 1 ? "top2" : ""}`} onClick={() => setSelectedParticipant(p)}>
                         <span className={`rank ${i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : ""}`}>{i + 1}</span>
-                        <div className="avatar" style={{ width: 38, height: 38, fontSize: 14, flexShrink: 0 }}>{p.name[0].toUpperCase()}</div>
+                        <div className='avatar' style={{width:38,height:38,fontSize:14,flexShrink:0}}>{p.avatar ? <img src={getAvatarUrl(p.avatar)} alt='' style={{width:'100%',height:'100%',objectFit:'contain'}} /> : p.name[0].toUpperCase()}</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div className="standing-name" style={{ display: "flex", alignItems: "center", gap: 4 }}>
                             {p.name}
