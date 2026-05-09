@@ -1137,6 +1137,7 @@ export default function App() {
       await update(dbRef(db, "tournaments/"+activeTournamentId+"/participants/"+currentUser.id), { avatar: avatarId });
       setCurrentUser(prev => ({ ...prev, avatar: avatarId }));
       setShowAvatarSelector(false);
+      setShowProfileMenu(false);
       showNotif("Avatar actualizado");
     } catch(e) { showNotif("Error guardando avatar"); }
   }
