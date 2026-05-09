@@ -9,6 +9,8 @@ const APIFOOTBALL_KEY = "bfc394917e14e28073b971110edeece5";
 const APIFOOTBALL_BASE = "https://v3.football.api-sports.io";
 // -- AVATARES
 const AVATARES = [
+  { id: "Alexia", nombre: "Alexia Putellas", archivo: "Alexia.png" },
+  { id: "Alex_Morgan", nombre: "Alex Morgan", archivo: "Alex_Morgan.png" },
   { id: "Beckand", nombre: "Beckham", archivo: "Beckand.jpeg" },
   { id: "Cristiano", nombre: "Cristiano", archivo: "Cristiano.jpeg" },
   { id: "Cruyff", nombre: "Cruyff", archivo: "Cruyff.png" },
@@ -19,7 +21,7 @@ const AVATARES = [
   { id: "Higuita", nombre: "Higuita", archivo: "Higuita.jpeg" },
   { id: "Iniesta", nombre: "Iniesta", archivo: "Iniesta.jpeg" },
   { id: "James", nombre: "James", archivo: "James.png" },
-  { id: "Linda", nombre: "Linda Cancedo", archivo: "Linda.png" },
+  { id: "Linda", nombre: "Linda Caicedo", archivo: "Linda.png" },
   { id: "Lucho", nombre: "Lucho Diaz", archivo: "Lucho.jpeg" },
   { id: "Luis_Suarez", nombre: "Luis Suarez", archivo: "Luis Suarez.jpeg" },
   { id: "Marta", nombre: "Marta", archivo: "Marta.png" },
