@@ -561,7 +561,7 @@ function StatsModal({ participant, stats, onClose, matches, predictions, scoring
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="avatar-lg">
-            {participant.photoURL ? <img src={participant.photoURL} alt="" /> : participant.name[0].toUpperCase()}
+            {participant.avatar ? <img src={getAvatarUrl(participant.avatar)} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} /> : participant.name[0].toUpperCase()}
           </div>
           <div>
             <div style={{ fontWeight: 700, fontSize: 18 }}>{participant.name}</div>
