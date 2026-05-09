@@ -895,18 +895,19 @@ function GroupCard({ groupLetter, matches }) {
 }
 
 // ── PROFILE MENU ───────────────────────────────────────────────────────────────
-function ProfileMenu({ user, onLogout, onClose }) {
+function ProfileMenu({ user, onLogout, onClose, onChangeAvatar }) {
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 300 }} onClick={onClose}>
       <div style={{ position: "absolute", top: 64, right: 12, background: "var(--card)", border: "1px solid var(--border)", borderRadius: 14, padding: 16, minWidth: 200, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }} onClick={e => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid var(--border)" }}>
-          <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--gold)", color: "var(--green-deep)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 18 }}>
-            {user.name[0].toUpperCase()}
-          </div>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>{user.name}</div>
-            <div style={{ fontSize: 11, color: "var(--text3)" }}>{user.role === "admin" ? "⚙️ Administrador" : "⚽ Jugador"}</div>
+            <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--gold)", color: "var(--green-deep)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 18, overflow: "hidden", cursor: "pointer" }} onClick={() => { onChangeAvatar(); onClose(); }}>
+            {user.avatar ? <img src={getAvatarUrl(user.avatar)} alt="" style={{width:"100%",height:"100%",objectFit:"contain"}} /> : user.name[0].toUpperCase()}
           </div>
+          </div>
+          {user.role !== "admin" && (
+              <button onClick={() => { onChangeAvatar(); onClose(); }} style={{ background:"none", border:"none", color:"var(--gold)", fontSize:11, cursor:"pointer", padding:0, marginTop:2 }}>✏️ Cambiar avatar</button>
+            )}
         </div>
         {user.role !== "admin" && (
           <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid var(--border)" }}>
@@ -1371,7 +1372,7 @@ export default function App() {
       <style>{css}</style>
       <div className={darkMode ? "" : "light"}>
         {notif && <div className="notif">{notif.msg}</div>}
-        {showProfileMenu && <ProfileMenu user={currentUser} onLogout={handleLogout} onClose={() => setShowProfileMenu(false)} />}
+        <ProfileMenu user={currentUser} onLogout={handleLogout} onClose={() => setShowProfileMenu(false)} onChangeAvatar={() => setShowAvatarSelector(true)}
         {showAvatarSelector && currentUser?.role !== "admin" && (
           <SelectorAvatar avatarActual={currentUser?.avatar} onSeleccionar={guardarAvatar} onCerrar={() => setShowAvatarSelector(false)} />
         )}
