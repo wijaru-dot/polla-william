@@ -445,7 +445,7 @@ function SelectorAvatar({ avatarActual, onSeleccionar, onCerrar }) {
         <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8, overflowY:"auto" }}>
           {AVATARES.map(av => (
             <div key={av.id} onClick={() => setSeleccionado(av.id)} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, cursor:"pointer", padding:"8px 4px", borderRadius:10, border: seleccionado===av.id ? "2px solid var(--gold)" : "2px solid transparent", background: seleccionado===av.id ? "rgba(255,215,0,0.1)" : "rgba(255,255,255,0.04)" }}>
-              <img src={"/avatars/"+av.archivo} alt={av.nombre} style={{ width:60, height:60, borderRadius:"50%", objectFit:"contain", background:"rgba(255,255,255,0.07)" }} />
+              <img src={"/avatars/"+av.archivo} alt={av.nombre} style={{ width:80, height:80, borderRadius:"50%", objectFit:"contain", background:"rgba(255,255,255,0.07)" }} />
               <span style={{ fontSize:9, color:"var(--text2)", textAlign:"center" }}>{av.nombre}</span>
             </div>
           ))}
@@ -1373,7 +1373,7 @@ export default function App() {
       <style>{css}</style>
       <div className={darkMode ? "" : "light"}>
         {notif && <div className="notif">{notif.msg}</div>}
-        <ProfileMenu user={currentUser} onLogout={handleLogout} onClose={() => setShowProfileMenu(false)} onChangeAvatar={() => setShowAvatarSelector(true)}/>
+        {showProfileMenu && <ProfileMenu user={currentUser} onLogout={handleLogout} onClose={() => setShowProfileMenu(false)} onChangeAvatar={() => { setShowAvatarSelector(true); setShowProfileMenu(false); }} />}
         {showAvatarSelector && currentUser?.role !== "admin" && (
           <SelectorAvatar avatarActual={currentUser?.avatar} onSeleccionar={guardarAvatar} onCerrar={() => setShowAvatarSelector(false)} />
         )}
