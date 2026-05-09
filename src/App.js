@@ -445,7 +445,7 @@ function SelectorAvatar({ avatarActual, onSeleccionar, onCerrar }) {
         <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8, overflowY:"auto" }}>
           {AVATARES.map(av => (
             <div key={av.id} onClick={() => setSeleccionado(av.id)} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, cursor:"pointer", padding:"8px 4px", borderRadius:10, border: seleccionado===av.id ? "2px solid var(--gold)" : "2px solid transparent", background: seleccionado===av.id ? "rgba(255,215,0,0.1)" : "rgba(255,255,255,0.04)" }}>
-              <img src={"/avatars/"+av.archivo} alt={av.nombre} style={{ width:80, height:80, borderRadius:"50%", objectFit:"contain", background:"rgba(255,255,255,0.07)" }} />
+              <img src={"/avatars/"+av.archivo} alt={av.nombre} style={{ width:80, height:80, borderRadius:"50%", objectFit:"cover", background:"rgba(255,255,255,0.07)" }} />
               <span style={{ fontSize:9, color:"var(--text2)", textAlign:"center" }}>{av.nombre}</span>
             </div>
           ))}
@@ -902,7 +902,7 @@ function ProfileMenu({ user, onLogout, onClose, onChangeAvatar }) {
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid var(--border)" }}>
           <div>
             <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--gold)", color: "var(--green-deep)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 18, overflow: "hidden", cursor: "pointer" }} onClick={() => { onChangeAvatar(); onClose(); }}>
-            {user.avatar ? <img src={getAvatarUrl(user.avatar)} alt="" style={{width:"100%",height:"100%",objectFit:"contain"}} /> : user.name[0].toUpperCase()}
+            {user.avatar ? <img src={getAvatarUrl(user.avatar)} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} /> : user.name[0].toUpperCase()}
           </div>
           </div>
           {user.role !== "admin" && (
@@ -1391,7 +1391,7 @@ export default function App() {
             <div className="header-right">
               <button className="dark-toggle" onClick={() => setDarkMode(d => !d)}>{darkMode ? "☀️" : "🌙"}</button>
               <div className="avatar" onClick={() => setShowProfileMenu(true)}>
-                {currentUser.avatar ? <img src={getAvatarUrl(currentUser.avatar)} alt="" style={{width:"100%",height:"100%",objectFit:"contain"}} /> : currentUser.name[0].toUpperCase()}
+                {currentUser.avatar ? <img src={getAvatarUrl(currentUser.avatar)} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} /> : currentUser.name[0].toUpperCase()}
               </div>
             </div>
           </header>
@@ -1492,7 +1492,7 @@ export default function App() {
                       <div key={p.id} className={`standings-row ${i === 0 ? "top1" : i === 1 ? "top2" : ""}`} onClick={() => setSelectedParticipant(p)}>
                         <span className={`rank ${i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : ""}`}>{i + 1}</span>
                       <div className="avatar" style={{ width: 38, height: 38, fontSize: 14, flexShrink: 0 }}>
-                        {p.avatar ? <img src={getAvatarUrl(p.avatar)} alt="" style={{width:"100%",height:"100%",objectFit:"contain"}} /> : p.name[0].toUpperCase()}
+                        {p.avatar ? <img src={getAvatarUrl(p.avatar)} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} /> : p.name[0].toUpperCase()}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div className="standing-name" style={{ display: "flex", alignItems: "center", gap: 4 }}>
