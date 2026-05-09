@@ -1493,7 +1493,7 @@ export default function App() {
                     return (
                       <div key={p.id} className={`standings-row ${i === 0 ? "top1" : i === 1 ? "top2" : ""}`} onClick={() => setSelectedParticipant(p)}>
                         <span className={`rank ${i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : ""}`}>{i + 1}</span>
-                      <div className="avatar" style={{ width: 38, height: 38, fontSize: 14, flexShrink: 0 }}>
+                      <div className="avatar" style={{ width: 48, height: 48, fontSize: 16, flexShrink: 0 }}>
                         {p.avatar ? <img src={getAvatarUrl(p.avatar)} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} /> : p.name[0].toUpperCase()}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
