@@ -1372,7 +1372,7 @@ export default function App() {
       <style>{css}</style>
       <div className={darkMode ? "" : "light"}>
         {notif && <div className="notif">{notif.msg}</div>}
-        <ProfileMenu user={currentUser} onLogout={handleLogout} onClose={() => setShowProfileMenu(false)} onChangeAvatar={() => setShowAvatarSelector(true)}
+        <ProfileMenu user={currentUser} onLogout={handleLogout} onClose={() => setShowProfileMenu(false)} onChangeAvatar={() => setShowAvatarSelector(true)}/>
         {showAvatarSelector && currentUser?.role !== "admin" && (
           <SelectorAvatar avatarActual={currentUser?.avatar} onSeleccionar={guardarAvatar} onCerrar={() => setShowAvatarSelector(false)} />
         )}
