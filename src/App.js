@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { db, auth } from process.env.REACT_APP_ENV === "development" ? "./firebase.dev" : "./firebase";
+import { db, auth } from "./firebase";
 import { TEAM_FLAGS, WC2026_MATCHES } from "./worldcupData";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
 import { ref as dbRef, onValue, set as fbSet, update, remove } from "firebase/database";
