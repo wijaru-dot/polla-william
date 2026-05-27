@@ -1,17 +1,32 @@
 export const TEAM_FLAGS = {
+  // Clubes
   "Arsenal": "🔴", "Atletico de Madrid": "🔴🔵", "Bayern Munich": "🔴⚪", "PSG": "🔵🔴",
+  // Grupo A
   "Mexico": "🇲🇽", "Corea del Sur": "🇰🇷", "Sudafrica": "🇿🇦", "Republica Checa": "🇨🇿",
-  "Canada": "🇨🇦", "Suiza": "🇨🇭", "Qatar": "🇶🇦", "Bosnia y Herzegovina": "🇧🇦",
-  "Brasil": "🇧🇷", "Marruecos": "🇲🇦", "Escocia": "🏴", "Haiti": "🇭🇹",
-  "Estados Unidos": "🇺🇸", "Australia": "🇦🇺", "Paraguay": "🇵🇾", "Turquia": "🇹🇷",
-  "Alemania": "🇩🇪", "Ecuador": "🇪🇨", "Costa de Marfil": "🇨🇮", "Curazao": "🇨🇼",
-  "Paises Bajos": "🇳🇱", "Japon": "🇯🇵", "Tunez": "🇹🇳", "Suecia": "🇸🇪",
-  "Belgica": "🇧🇪", "Iran": "🇮🇷", "Egipto": "🇪🇬", "Nueva Zelandia": "🇳🇿",
-  "Espana": "🇪🇸", "Uruguay": "🇺🇾", "Cabo Verde": "🇨🇻", "Arabia Saudita": "🇸🇦",
-  "Francia": "🇫🇷", "Senegal": "🇸🇳", "Noruega": "🇳🇴", "Iraq": "🇮🇶",
-  "Argentina": "🇦🇷", "Argelia": "🇩🇿", "Austria": "🇦🇹", "Jordania": "🇯🇴",
-  "Portugal": "🇵🇹", "Colombia": "🇨🇴", "Uzbekistan": "🇺🇿", "RD del Congo": "🇨🇩",
-  "Inglaterra": "🏴", "Croacia": "🇭🇷", "Panama": "🇵🇦", "Ghana": "🇬🇭"
+  // Grupo B
+  "Canada": "🇨🇦", "Suiza": "🇨🇭", "Argelia": "🇩🇿", "Uruguay": "🇺🇾",
+  // Grupo C
+  "Espana": "🇪🇸", "Brasil": "🇧🇷", "Japon": "🇯🇵", "Austria": "🇦🇹",
+  // Grupo D
+  "Francia": "🇫🇷", "Argentina": "🇦🇷", "Uzbekistan": "🇺🇿", "Noruega": "🇳🇴",
+  // Grupo E
+  "Portugal": "🇵🇹", "Alemania": "🇩🇪", "Ecuador": "🇪🇨", "Jordania": "🇯🇴",
+  // Grupo F
+  "Belgica": "🇧🇪", "Colombia": "🇨🇴", "Tunez": "🇹🇳", "Haiti": "🇭🇹",
+  // Grupo G
+  "Estados Unidos": "🇺🇸", "Arabia Saudita": "🇸🇦", "Iran": "🇮🇷", "Curazao": "🇨🇼",
+  // Grupo H
+  "Paises Bajos": "🇳🇱", "Paraguay": "🇵🇾", "RD del Congo": "🇨🇩", "Senegal": "🇸🇳",
+  // Grupo I
+  "Costa de Marfil": "🇨🇮", "Turquia": "🇹🇷", "Marruecos": "🇲🇦", "Egipto": "🇪🇬",
+  // Grupo J
+  "Inglaterra": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "Nueva Zelandia": "🇳🇿", "Iraq": "🇮🇶", "Escocia": "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+  // Grupo K
+  "Australia": "🇦🇺", "Cabo Verde": "🇨🇻", "Suecia": "🇸🇪", "Bosnia y Herzegovina": "🇧🇦",
+  // Grupo L
+  "Panama": "🇵🇦", "Croacia": "🇭🇷", "Ghana": "🇬🇭",
+  // Otros
+  "Qatar": "🇶🇦",
 };
 
 export const WC2026_MATCHES = [
