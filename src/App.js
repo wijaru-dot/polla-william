@@ -191,8 +191,9 @@ function computeStats(participantId, matches, predictions, champPredictions, tou
   });
 
   total += champPts;
+  const knockoutPoints = elimPts + champPts;
   const pct = played > 0 ? Math.round((wins / played) * 100) : 0;
-  return { total, exact, wins, groupsPts, elimPts, champPts, streak: maxStreak, pct, played, noPred, totalMatches };
+  return { total, exact, wins, groupsPts, elimPts, knockoutPoints, champPts, streak: maxStreak, pct, played, noPred, totalMatches };
 }
 
 // ── CSS ────────────────────────────────────────────────────────────────────────
@@ -1282,15 +1283,21 @@ export default function App() {
   const activeTournament = tournaments[activeTournamentId];
   const scoring = settings.scoring || { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1, champion: 10 };
 
-  const standings = participants
+  const standingsBase = participants
     .filter(p => p.role !== "admin" && (p.active || p.paidGroups || p.paidElim))
-    .map(p => ({ ...p, ...computeStats(p.id, matches, predictions, champPredictions, settings.tournamentWinner, scoring) }))
-    .sort((a, b) =>
-      b.total - a.total ||           // 1. Mayor puntaje
-      b.exact - a.exact ||           // 2. Mayor exactos
-      b.wins - a.wins ||             // 3. Mayor ganadores acertados
-      a.noPred - b.noPred            // 4. Menor predicciones sin realizar
+    .map(p => ({ ...p, ...computeStats(p.id, matches, predictions, champPredictions, settings.tournamentWinner, scoring) }));
+
+  const sortStandings = (list, tab) => {
+    const getPts = p => tab === "groups" ? p.groupsPts : tab === "elim" ? p.knockoutPoints : p.total;
+    return [...list].sort((a, b) =>
+      getPts(b) - getPts(a) ||
+      b.exact - a.exact ||
+      b.wins - a.wins ||
+      a.noPred - b.noPred
     );
+  };
+
+  const standings = sortStandings(standingsBase, standTab);
 
   const isKnockoutPhase = (phase) => ["r16", "qf", "sf", "final"].includes(phase);
   const upcomingMatches = Object.values(matches).filter(m => m.status !== "finished" && (m.enabled || m.phase === "test" || isKnockoutPhase(m.phase) || isAdmin)).sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
@@ -1489,7 +1496,7 @@ export default function App() {
                 {standings.length === 0
                   ? <div className="empty"><div className="empty-icon">👥</div><div className="empty-text">Sin participantes activos aún</div></div>
                   : standings.map((p, i) => {
-                    const pts = standTab === "groups" ? p.groupsPts : standTab === "elim" ? p.elimPts : p.total;
+                    const pts = standTab === "groups" ? p.groupsPts : standTab === "elim" ? p.knockoutPoints : p.total;
                     return (
                       <div key={p.id} className={`standings-row ${i === 0 ? "top1" : i === 1 ? "top2" : ""}`} onClick={() => setSelectedParticipant(p)}>
                         <span className={`rank ${i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : ""}`}>{i + 1}</span>
