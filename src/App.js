@@ -113,7 +113,7 @@ function isPastDeadline(match) {
   return new Date() > new Date(match.datetime);
 }
 function getPhaseLabel(phase) {
-  const map = { groups: "Fase de Grupos", r16: "Octavos de Final", qf: "Cuartos de Final", sf: "Semifinal", final: "Gran Final", test: "🧪 Prueba" };
+  const map = { groups: "Fase de Grupos", r32: "Dieciseisavos", r16: "Octavos de Final", qf: "Cuartos de Final", sf: "Semifinal", final: "Gran Final", test: "🧪 Prueba" };
   return map[phase] || phase;
 }
 
@@ -788,17 +788,9 @@ function EditMatch({ match, onEdit, onCorrectResult }) {
             <div className="input-group" style={{ flex: 1 }}>
               <label className="input-label">Fase</label>
               <select className="input" value={form.phase} onChange={e => setForm(f => ({ ...f, phase: e.target.value }))}>
-                <option value="test">🧪 Prueba</option><option value="groups">Fase Grupos</option><option value="r16">Octavos</option><option value="qf">Cuartos</option><option value="sf">Semifinal</option><option value="final">Final</option>
+                <option value="test">🧪 Prueba</option><option value="groups">Fase Grupos</option><option value="r32">Dieciseisavos</option><option value="r16">Octavos</option><option value="qf">Cuartos</option><option value="sf">Semifinal</option><option value="final">Final</option>
               </select>
             </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderTop: "1px solid var(--border)", marginTop: 8 }}>
-            <span style={{ fontSize: 13, color: "var(--text2)", fontWeight: 600 }}>Visible para usuarios</span>
-            <button
-              onClick={() => onEdit(match.id, { enabled: !match.enabled })}
-              style={{ background: match.enabled ? "var(--green)" : "var(--border)", border: "none", borderRadius: 20, padding: "6px 16px", color: match.enabled ? "#000" : "var(--text2)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-              {match.enabled ? "✅ Habilitado" : "⛔ Deshabilitado"}
-            </button>
           </div>
           <button className="btn btn-primary btn-full btn-sm" onClick={() => { 
             const utcForm = { ...form, datetime: new Date(form.datetime).toISOString() };
@@ -1300,7 +1292,7 @@ export default function App() {
       a.noPred - b.noPred            // 4. Menor predicciones sin realizar
     );
 
-  const isKnockoutPhase = (phase) => ["r16", "qf", "sf", "final"].includes(phase);
+  const isKnockoutPhase = (phase) => ["r32", "r16", "qf", "sf", "final"].includes(phase);
   const upcomingMatches = Object.values(matches).filter(m => m.status !== "finished" && (m.enabled || m.phase === "test" || isKnockoutPhase(m.phase) || isAdmin)).sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
   const finishedMatches = Object.values(matches).filter(m => m.status === "finished" && (m.enabled || m.phase === "test" || isKnockoutPhase(m.phase) || isAdmin)).sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
 
@@ -1679,7 +1671,7 @@ export default function App() {
                         <div className="input-group" style={{ flex: 1 }}>
                           <label className="input-label">Fase</label>
                           <select className="input" value={newMatch.phase} onChange={e => setNewMatch(m => ({ ...m, phase: e.target.value }))}>
-                            <option value="test">🧪 Prueba</option><option value="groups">Fase Grupos</option><option value="r16">Octavos</option><option value="qf">Cuartos</option><option value="sf">Semifinal</option><option value="final">Final</option>
+                            <option value="test">🧪 Prueba</option><option value="groups">Fase Grupos</option><option value="r32">Dieciseisavos</option><option value="r16">Octavos</option><option value="qf">Cuartos</option><option value="sf">Semifinal</option><option value="final">Final</option>
                           </select>
                         </div>
                       </div>
