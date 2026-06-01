@@ -800,9 +800,16 @@ function EditMatch({ match, onEdit, onCorrectResult }) {
             <div className="input-group" style={{ flex: 1 }}>
               <label className="input-label">Fase</label>
               <select className="input" value={form.phase} onChange={e => setForm(f => ({ ...f, phase: e.target.value }))}>
-                <option value="test">🧪 Prueba</option><option value="groups">Fase Grupos</option><option value="r16">Octavos</option><option value="qf">Cuartos</option><option value="sf">Semifinal</option><option value="final">Final</option>
+                <option value="test">🧪 Prueba</option><option value="groups">Fase Grupos</option><option value="r32">Dieciseisavos</option><option value="r16">Octavos</option><option value="qf">Cuartos</option><option value="sf">Semifinal</option><option value="final">Final</option>
               </select>
             </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderTop: "1px solid var(--border)", marginTop: 8 }}>
+            <span style={{ fontSize: 13, color: "var(--text2)", fontWeight: 600 }}>Visible para usuarios</span>
+            <button onClick={() => onEdit(match.id, { enabled: !match.enabled })}
+              style={{ background: match.enabled ? "var(--green)" : "var(--border)", border: "none", borderRadius: 20, padding: "6px 16px", color: match.enabled ? "#000" : "var(--text2)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              {match.enabled ? "✅ Habilitado" : "⛔ Deshabilitado"}
+            </button>
           </div>
           <button className="btn btn-primary btn-full btn-sm" onClick={() => { 
             const utcForm = { ...form, datetime: new Date(form.datetime).toISOString() };
