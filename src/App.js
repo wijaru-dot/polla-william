@@ -113,7 +113,7 @@ function isPastDeadline(match) {
   return new Date() > new Date(match.datetime);
 }
 function getPhaseLabel(phase) {
-  const map = { groups: "Fase de Grupos", r32: "Dieciseisavos", r16: "Octavos de Final", qf: "Cuartos de Final", sf: "Semifinal", final: "Gran Final", test: "🧪 Prueba" };
+  const map = { groups: "Fase de Grupos", r16: "Octavos de Final", qf: "Cuartos de Final", sf: "Semifinal", final: "Gran Final", test: "🧪 Prueba" };
   return map[phase] || phase;
 }
 
@@ -145,7 +145,12 @@ function calcPoints(pred, result, scoring) {
         pts += s.winner;
         if (pHome === rHome && pAway === rAway) pts += s.exact;
         if (pred.pensHome !== undefined && pred.pensAway !== undefined) {
-          if (parseInt(pred.pensHome) === parseInt(result.pensHome) && parseInt(pred.pensAway) === parseInt(result.pensAway)) pts += s.penalty;
+          if (parseInt(pred.pensHome) === parseInt(result.pensHome) && parseInt(pred.pensAway) === parseInt(result.pensAway)) {
+            pts += s.penalty; // acertó marcador exacto de penales (+3)
+          } else {
+            const predPensWinner = parseInt(pred.pensHome) > parseInt(pred.pensAway) ? "home" : "away";
+            if (predPensWinner === realPensWinner) pts += s.wrongPenalty; // acertó ganador en penales (+1)
+          }
         }
       } else {
         if (predWinner === realPensWinner) pts += s.wrongPenalty;
@@ -191,8 +196,9 @@ function computeStats(participantId, matches, predictions, champPredictions, tou
   });
 
   total += champPts;
+  const knockoutPoints = elimPts + champPts;
   const pct = played > 0 ? Math.round((wins / played) * 100) : 0;
-  return { total, exact, wins, groupsPts, elimPts, champPts, streak: maxStreak, pct, played, noPred, totalMatches };
+  return { total, exact, wins, groupsPts, elimPts, knockoutPoints, champPts, streak: maxStreak, pct, played, noPred, totalMatches };
 }
 
 // ── CSS ────────────────────────────────────────────────────────────────────────
@@ -539,8 +545,14 @@ function RulesBox({ scoring, tournamentName }) {
       <div className="rules-title">📋 Reglas de Puntuación{tournamentName ? ` — ${tournamentName}` : ""}</div>
       <div className="rules-row"><span>✅ Acertar ganador o empate (90 min)</span><span className="rules-pts">{s.winner} pts</span></div>
       <div className="rules-row"><span>🎯 Bonus: marcador exacto</span><span className="rules-pts">+{s.exact} pts</span></div>
-      <div className="rules-row"><span>⚽ Bonus: penales exactos</span><span className="rules-pts">+{s.penalty} pts</span></div>
-      <div className="rules-row"><span>🔄 Ganador acertado pero fue a penales</span><span className="rules-pts">{s.wrongPenalty} pt</span></div>
+      <div className="rules-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 6, marginTop: 4 }}>
+        <span style={{ fontSize: 11, color: "var(--text3)" }}>En eliminatorias (empate → penales):</span>
+      </div>
+      <div className="rules-row"><span>🔄 Predijo empate + acertó ganador en penales</span><span className="rules-pts">+{s.wrongPenalty} pt</span></div>
+      <div className="rules-row"><span>🎯 Bonus: marcador exacto de penales</span><span className="rules-pts">+{s.penalty} pts</span></div>
+      <div className="rules-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 6, marginTop: 4 }}>
+        <span>⚽ Solo acertó ganador (fue a penales)</span><span className="rules-pts">{s.wrongPenalty} pt</span>
+      </div>
       <div className="rules-row"><span>🏆 Polla del campeón</span><span className="rules-pts">+{s.champion} pts</span></div>
       <div style={{ marginTop: 8, fontSize: 11, color: "var(--text3)" }}>
         Máx partido normal: <strong>{s.winner + s.exact} pts</strong> · Con penales: <strong>{s.winner + s.exact + s.penalty} pts</strong>
@@ -788,7 +800,7 @@ function EditMatch({ match, onEdit, onCorrectResult }) {
             <div className="input-group" style={{ flex: 1 }}>
               <label className="input-label">Fase</label>
               <select className="input" value={form.phase} onChange={e => setForm(f => ({ ...f, phase: e.target.value }))}>
-                <option value="test">🧪 Prueba</option><option value="groups">Fase Grupos</option><option value="r32">Dieciseisavos</option><option value="r16">Octavos</option><option value="qf">Cuartos</option><option value="sf">Semifinal</option><option value="final">Final</option>
+                <option value="test">🧪 Prueba</option><option value="groups">Fase Grupos</option><option value="r16">Octavos</option><option value="qf">Cuartos</option><option value="sf">Semifinal</option><option value="final">Final</option>
               </select>
             </div>
           </div>
@@ -1282,15 +1294,21 @@ export default function App() {
   const activeTournament = tournaments[activeTournamentId];
   const scoring = settings.scoring || { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1, champion: 10 };
 
-  const standings = participants
+  const standingsBase = participants
     .filter(p => p.role !== "admin" && (p.active || p.paidGroups || p.paidElim))
-    .map(p => ({ ...p, ...computeStats(p.id, matches, predictions, champPredictions, settings.tournamentWinner, scoring) }))
-    .sort((a, b) =>
-      b.total - a.total ||           // 1. Mayor puntaje
-      b.exact - a.exact ||           // 2. Mayor exactos
-      b.wins - a.wins ||             // 3. Mayor ganadores acertados
-      a.noPred - b.noPred            // 4. Menor predicciones sin realizar
+    .map(p => ({ ...p, ...computeStats(p.id, matches, predictions, champPredictions, settings.tournamentWinner, scoring) }));
+
+  const sortStandings = (list, tab) => {
+    const getPts = p => tab === "groups" ? p.groupsPts : tab === "elim" ? p.knockoutPoints : p.total;
+    return [...list].sort((a, b) =>
+      getPts(b) - getPts(a) ||
+      b.exact - a.exact ||
+      b.wins - a.wins ||
+      a.noPred - b.noPred
     );
+  };
+
+  const standings = sortStandings(standingsBase, standTab);
 
   const isKnockoutPhase = (phase) => ["r32", "r16", "qf", "sf", "final"].includes(phase);
   const upcomingMatches = Object.values(matches).filter(m => m.status !== "finished" && (m.enabled || m.phase === "test" || isKnockoutPhase(m.phase) || isAdmin)).sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
@@ -1489,7 +1507,7 @@ export default function App() {
                 {standings.length === 0
                   ? <div className="empty"><div className="empty-icon">👥</div><div className="empty-text">Sin participantes activos aún</div></div>
                   : standings.map((p, i) => {
-                    const pts = standTab === "groups" ? p.groupsPts : standTab === "elim" ? p.elimPts : p.total;
+                    const pts = standTab === "groups" ? p.groupsPts : standTab === "elim" ? p.knockoutPoints : p.total;
                     return (
                       <div key={p.id} className={`standings-row ${i === 0 ? "top1" : i === 1 ? "top2" : ""}`} onClick={() => setSelectedParticipant(p)}>
                         <span className={`rank ${i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : ""}`}>{i + 1}</span>
@@ -1671,7 +1689,7 @@ export default function App() {
                         <div className="input-group" style={{ flex: 1 }}>
                           <label className="input-label">Fase</label>
                           <select className="input" value={newMatch.phase} onChange={e => setNewMatch(m => ({ ...m, phase: e.target.value }))}>
-                            <option value="test">🧪 Prueba</option><option value="groups">Fase Grupos</option><option value="r32">Dieciseisavos</option><option value="r16">Octavos</option><option value="qf">Cuartos</option><option value="sf">Semifinal</option><option value="final">Final</option>
+                            <option value="test">🧪 Prueba</option><option value="groups">Fase Grupos</option><option value="r16">Octavos</option><option value="qf">Cuartos</option><option value="sf">Semifinal</option><option value="final">Final</option>
                           </select>
                         </div>
                       </div>
