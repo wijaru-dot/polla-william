@@ -1630,14 +1630,52 @@ export default function App() {
                 <div className="pool-grid">
                   {activeTournament?.type === "worldcup" ? (
                     <>
-                      <div className="pool-card"><div className="pool-label">💰 POZO GRUPOS</div><div className="pool-amount">{"$" + pools.groups.toLocaleString()}</div><div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency} · {settings.prizeFirst || 70}/{settings.prizeSecond || 30}</div></div>
-                      <div className="pool-card"><div className="pool-label">🏆 POZO ELIM.</div><div className="pool-amount">{"$" + pools.eliminations.toLocaleString()}</div><div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency} · {settings.prizeFirst || 70}/{settings.prizeSecond || 30}</div></div>
+                      <div className="pool-card">
+                        <div className="pool-label">💰 POZO GRUPOS</div>
+                        <div className="pool-amount">{"$" + pools.groups.toLocaleString()}</div>
+                        <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency}</div>
+                        <div style={{ marginTop: 6, borderTop: "1px solid var(--border)", paddingTop: 6 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 3 }}>
+                            <span style={{ color: "var(--gold)" }}>🥇 1er lugar ({settings.prizeFirst || 70}%)</span>
+                            <span style={{ fontWeight: 700, color: "var(--gold)" }}>${Math.round(pools.groups * (settings.prizeFirst || 70) / 100).toLocaleString()}</span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                            <span style={{ color: "var(--text2)" }}>🥈 2do lugar ({settings.prizeSecond || 30}%)</span>
+                            <span style={{ fontWeight: 700, color: "var(--text2)" }}>${Math.round(pools.groups * (settings.prizeSecond || 30) / 100).toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="pool-card">
+                        <div className="pool-label">🏆 POZO ELIM.</div>
+                        <div className="pool-amount">{"$" + pools.eliminations.toLocaleString()}</div>
+                        <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency}</div>
+                        <div style={{ marginTop: 6, borderTop: "1px solid var(--border)", paddingTop: 6 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 3 }}>
+                            <span style={{ color: "var(--gold)" }}>🥇 1er lugar ({settings.prizeFirst || 70}%)</span>
+                            <span style={{ fontWeight: 700, color: "var(--gold)" }}>${Math.round(pools.eliminations * (settings.prizeFirst || 70) / 100).toLocaleString()}</span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                            <span style={{ color: "var(--text2)" }}>🥈 2do lugar ({settings.prizeSecond || 30}%)</span>
+                            <span style={{ fontWeight: 700, color: "var(--text2)" }}>${Math.round(pools.eliminations * (settings.prizeSecond || 30) / 100).toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </div>
                     </>
                   ) : (
                     <div className="pool-card" style={{ gridColumn: "1 / -1" }}>
                       <div className="pool-label">💰 POZO {activeTournament?.name?.toUpperCase()}</div>
                       <div className="pool-amount">{"$" + (pools.groups + pools.eliminations).toLocaleString()}</div>
-                      <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency} · {settings.prizeFirst || 70}/{settings.prizeSecond ?? (100 - (settings.prizeFirst || 70))}</div>
+                      <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency}</div>
+                      <div style={{ marginTop: 6, borderTop: "1px solid var(--border)", paddingTop: 6 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 3 }}>
+                          <span style={{ color: "var(--gold)" }}>🥇 1er lugar ({settings.prizeFirst || 70}%)</span>
+                          <span style={{ fontWeight: 700, color: "var(--gold)" }}>${Math.round((pools.groups + pools.eliminations) * (settings.prizeFirst || 70) / 100).toLocaleString()}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                          <span style={{ color: "var(--text2)" }}>🥈 2do lugar ({settings.prizeSecond || 30}%)</span>
+                          <span style={{ fontWeight: 700, color: "var(--text2)" }}>${Math.round((pools.groups + pools.eliminations) * (settings.prizeSecond || 30) / 100).toLocaleString()}</span>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
