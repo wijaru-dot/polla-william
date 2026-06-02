@@ -629,7 +629,7 @@ function StatsModal({ participant, stats, onClose, matches, predictions, scoring
               <div>
                 <div style={{ fontWeight: 500 }}>{m.homeTeam} vs {m.awayTeam}</div>
                 <div style={{ fontSize: 11, color: "var(--text3)" }}>
-                  Real: {m.result.home}-{m.result.away} · Mi pred: {pred ? `${pred.home}-${pred.away}` : "Sin pred."}
+                  Real: {m.result.home}-{m.result.away}{m.result.penalties ? ` (pen: ${m.result.pensHome}-${m.result.pensAway})` : ""} · Mi pred: {pred ? `${pred.home}-${pred.away}${pred.pensHome !== undefined ? ` (pen: ${pred.pensHome}-${pred.pensAway})` : ""}` : "Sin pred."}
                 </div>
               </div>
               {pts !== null && <span className={`pts-badge ${pts >= 4 ? "good" : pts > 0 ? "ok" : "zero"}`}>{pts}p</span>}
@@ -721,7 +721,7 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
             </div>
           )}
           {locked && !myPred && <div className="warning-box" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>⏰ Sin predicción — 0 puntos</div>}
-          {locked && myPred && <div className="info-box" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>🔒 Predicción guardada · {myPred.home}-{myPred.away}</div>}
+          {locked && myPred && <div className="info-box" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>🔒 Predicción guardada · {myPred.home}-{myPred.away}{myPred.pensHome !== undefined ? ` (pen: ${myPred.pensHome}-${myPred.pensAway})` : ""}</div>}
           {isAdmin && locked && <AdminSetResult match={match} onSetResult={onSetResult} />}
         </div>
       )}
@@ -751,7 +751,7 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
                   <div key={uid} className="reveal-item">
                     <div className="reveal-name">{p.userName}</div>
                     <div className="reveal-score">
-                      <span>{p.home}-{p.away}</span>
+                      <span>{p.home}-{p.away}{p.pensHome !== undefined ? ` (pen: ${p.pensHome}-${p.pensAway})` : ""}</span>
                       <span className={`pts-badge ${pts >= 4 ? "good" : pts > 0 ? "ok" : "zero"}`} style={{ fontSize: 10, padding: "1px 6px" }}>{pts}p</span>
                     </div>
                   </div>
