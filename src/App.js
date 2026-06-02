@@ -714,6 +714,9 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
                   <Stepper value={pred.pensAway ?? 0} onChange={v => setPred(p => ({ ...p, pensAway: v }))} />
                 </div>
               )}
+              {pred.predictPens && pred.pensHome === 0 && pred.pensAway === 0 && (
+                <div className="warning-box" style={{ marginTop: 6, marginBottom: 0, fontSize: 11 }}>⚠️ El marcador de penales no puede ser 0-0</div>
+              )}
             </div>
           )}
           {!locked && (
@@ -726,7 +729,9 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
                   <button className="btn btn-secondary btn-sm" style={{ flexShrink: 0 }} onClick={() => setEditing(true)}>✏️</button>
                 </>
               ) : (
-                <button className="btn btn-primary btn-full btn-sm" onClick={() => { onSave(match.id, pred); setEditing(false); }}>
+                <button className="btn btn-primary btn-full btn-sm" 
+                  disabled={pred.predictPens && pred.pensHome === 0 && pred.pensAway === 0}
+                  onClick={() => { onSave(match.id, pred); setEditing(false); }}>
                   💾 Guardar predicción
                 </button>
               )}
