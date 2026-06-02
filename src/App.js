@@ -562,8 +562,8 @@ function RulesBox({ scoring, tournamentName }) {
 }
 
 // ── STATS MODAL ────────────────────────────────────────────────────────────────
-function StatsModal({ participant, stats, onClose, matches, predictions, scoring }) {
-  const [tab, setTab] = useState("total");
+function StatsModal({ participant, stats, onClose, matches, predictions, scoring, initialTab }) {
+  const [tab, setTab] = useState(initialTab || "total");
 
   const isKnockoutPhase = (phase) => ["r32", "r16", "qf", "sf", "final"].includes(phase);
 
@@ -1452,7 +1452,7 @@ export default function App() {
           <SelectorAvatar avatarActual={currentUser?.avatar} onSeleccionar={guardarAvatar} onCerrar={() => setShowAvatarSelector(false)} />
         )}
         {selectedParticipant && (
-          <StatsModal participant={selectedParticipant} stats={computeStats(selectedParticipant.id, matches, predictions, champPredictions, settings.tournamentWinner, scoring)} matches={matches} predictions={predictions} scoring={scoring} onClose={() => setSelectedParticipant(null)} />
+          <StatsModal key={`${selectedParticipant.id}-${standTab}`} participant={selectedParticipant} stats={computeStats(selectedParticipant.id, matches, predictions, champPredictions, settings.tournamentWinner, scoring)} matches={matches} predictions={predictions} scoring={scoring} onClose={() => setSelectedParticipant(null)} initialTab={standTab} />
         )}
 
         <div className="app">
