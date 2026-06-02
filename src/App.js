@@ -540,6 +540,17 @@ function ScoringConfig({ scoring, onChange }) {
 // ── RULES BOX ─────────────────────────────────────────────────────────────────
 function RulesBox({ scoring, tournamentName }) {
   const s = scoring || { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1, champion: 10 };
+  const [showExamples, setShowExamples] = useState(false);
+  const examples = [
+    { id: "B", pred: "2-2 sin penales", pts: 2, rows: [{ ok: true, desc: "Acertó empate", pts: 2 }, { ok: false, desc: "Marcador incorrecto", pts: 0 }] },
+    { id: "C", pred: "1-1 sin penales", pts: 5, rows: [{ ok: true, desc: "Acertó empate", pts: 2 }, { ok: true, desc: "Marcador exacto", pts: 3 }] },
+    { id: "D", pred: "2-2 + local gana pen", pts: 3, rows: [{ ok: true, desc: "Acertó empate", pts: 2 }, { ok: false, desc: "Marcador incorrecto", pts: 0 }, { ok: true, desc: "Acertó ganador en penales", pts: 1 }] },
+    { id: "E", pred: "1-1 + local gana pen", pts: 6, rows: [{ ok: true, desc: "Acertó empate", pts: 2 }, { ok: true, desc: "Marcador exacto", pts: 3 }, { ok: true, desc: "Acertó ganador en penales", pts: 1 }] },
+    { id: "F", pred: "2-2 + pen 5-3 exacto", pts: 5, rows: [{ ok: true, desc: "Acertó empate", pts: 2 }, { ok: false, desc: "Marcador incorrecto", pts: 0 }, { ok: true, desc: "Penales exactos", pts: 3 }] },
+    { id: "G", pred: "1-1 + pen 5-3 exacto", pts: 8, rows: [{ ok: true, desc: "Acertó empate", pts: 2 }, { ok: true, desc: "Marcador exacto", pts: 3 }, { ok: true, desc: "Penales exactos", pts: 3 }] },
+    { id: "H", pred: "2-0 local directo", pts: 1, rows: [{ ok: true, desc: "Acertó ganador final (fue a pen)", pts: 1 }] },
+    { id: "I", pred: "0-2 visitante", pts: 0, rows: [{ ok: false, desc: "No acertó el resultado", pts: 0 }] },
+  ];
   return (
     <div className="rules-box">
       <div className="rules-title">📋 Reglas de Puntuación{tournamentName ? ` — ${tournamentName}` : ""}</div>
@@ -557,6 +568,29 @@ function RulesBox({ scoring, tournamentName }) {
       <div style={{ marginTop: 8, fontSize: 11, color: "var(--text3)" }}>
         Máx partido normal: <strong>{s.winner + s.exact} pts</strong> · Con penales: <strong>{s.winner + s.exact + s.penalty} pts</strong>
       </div>
+      <button onClick={() => setShowExamples(e => !e)}
+        style={{ marginTop: 10, width: "100%", background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.2)", borderRadius: 8, padding: "7px 0", fontSize: 12, fontWeight: 700, color: "var(--gold)", cursor: "pointer" }}>
+        {showExamples ? "▲ Ocultar ejemplos" : "📖 Ver ejemplos con penales"}
+      </button>
+      {showExamples && (
+        <div style={{ marginTop: 10 }}>
+          <div style={{ fontSize: 11, color: "var(--text2)", marginBottom: 6, fontWeight: 700 }}>Ejemplo: partido termina 1-1 · local gana penales 5-3</div>
+          {examples.map(ex => (
+            <div key={ex.id} style={{ marginBottom: 8, background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 10px", borderBottom: "1px solid var(--border)", fontSize: 11 }}>
+                <span style={{ fontWeight: 700, color: "var(--text2)" }}>{ex.id}. {ex.pred}</span>
+                <span style={{ fontWeight: 700, color: ex.pts >= 5 ? "var(--green)" : ex.pts > 0 ? "var(--gold)" : "var(--text3)" }}>{ex.pts} pts</span>
+              </div>
+              {ex.rows.map((r, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "3px 10px", fontSize: 11 }}>
+                  <span style={{ color: r.ok ? "var(--green)" : "var(--text3)" }}>{r.ok ? "✅" : "❌"} {r.desc}</span>
+                  <span style={{ color: r.pts > 0 ? "var(--green)" : "var(--text3)" }}>{r.pts > 0 ? `+${r.pts}` : "—"}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -651,6 +685,43 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
   const isKnockout = match.phase !== "groups" && match.phase !== "test";
   const predDraw = parseInt(pred.home) === parseInt(pred.away);
   const myPts = finished ? calcPoints(myPred, match.result, scoring) : null;
+  const [showBreakdown, setShowBreakdown] = useState(false);
+
+  const getBreakdown = () => {
+    if (!myPred || myPts === null) return [];
+    const s = scoring || { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1 };
+    const rows = [];
+    const rHome = parseInt(match.result.home), rAway = parseInt(match.result.away);
+    const pHome = parseInt(myPred.home), pAway = parseInt(myPred.away);
+    const realWinner = rHome > rAway ? "home" : rAway > rHome ? "away" : "draw";
+    const predWinner = pHome > pAway ? "home" : pAway > pHome ? "away" : "draw";
+    const realPensWinner = match.result.pensHome > match.result.pensAway ? "home" : "away";
+    if (predWinner === realWinner) {
+      rows.push({ ok: true, desc: predWinner === "draw" ? "Acertó empate" : "Acertó ganador", pts: s.winner });
+      if (pHome === rHome && pAway === rAway) rows.push({ ok: true, desc: "Marcador exacto", pts: s.exact });
+      else rows.push({ ok: false, desc: `Marcador incorrecto (predijo ${pHome}-${pAway})`, pts: 0 });
+      if (match.result.penalties && myPred.pensHome != null) {
+        const predPensWinner = parseInt(myPred.pensHome) > parseInt(myPred.pensAway) ? "home" : "away";
+        if (parseInt(myPred.pensHome) === parseInt(match.result.pensHome) && parseInt(myPred.pensAway) === parseInt(match.result.pensAway)) {
+          rows.push({ ok: true, desc: `Marcador exacto de penales (${myPred.pensHome}-${myPred.pensAway})`, pts: s.penalty });
+        } else if (predPensWinner === realPensWinner) {
+          rows.push({ ok: true, desc: "Acertó ganador en penales", pts: s.wrongPenalty });
+        } else {
+          rows.push({ ok: false, desc: "No acertó el ganador en penales", pts: 0 });
+        }
+      }
+    } else if (match.result.penalties) {
+      const predFinalWinner = predWinner;
+      if (predFinalWinner === realPensWinner) {
+        rows.push({ ok: true, desc: "Acertó ganador final (fue a penales)", pts: s.wrongPenalty });
+      } else {
+        rows.push({ ok: false, desc: `No acertó el resultado (predijo ${pHome}-${pAway})`, pts: 0 });
+      }
+    } else {
+      rows.push({ ok: false, desc: `No acertó el resultado (predijo ${pHome}-${pAway})`, pts: 0 });
+    }
+    return rows;
+  };
   const phaseClass = match.phase === "test" ? "phase-test" : match.phase === "groups" ? "phase-groups" : "phase-knockout";
   const { liveData, isLive } = useLiveScore(match);
 
@@ -752,11 +823,28 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
               {match.result.penalties && <div style={{ fontSize: 10, color: "var(--text3)" }}>Penales: {match.result.pensHome}-{match.result.pensAway}</div>}
             </div>
             {myPts !== null && (
-              <span className={`pts-badge ${myPts >= 4 ? "good" : myPts > 0 ? "ok" : "zero"}`}>
-                {myPts >= 4 ? "🎯" : myPts > 0 ? "✅" : "❌"} {myPts} pts
+              <span className={`pts-badge ${myPts >= 4 ? "good" : myPts > 0 ? "ok" : "zero"}`}
+                style={{ cursor: "pointer" }}
+                onClick={() => setShowBreakdown(b => !b)}>
+                {myPts >= 4 ? "🎯" : myPts > 0 ? "✅" : "❌"} {myPts} pts ℹ️
               </span>
             )}
           </div>
+          {showBreakdown && myPts !== null && (
+            <div style={{ margin: "8px 0", background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+              <div style={{ padding: "6px 12px", fontSize: 11, fontWeight: 700, color: "var(--text2)", borderBottom: "1px solid var(--border)" }}>Desglose de puntos</div>
+              {getBreakdown().map((r, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 12px", borderBottom: "1px solid var(--border)", fontSize: 12 }}>
+                  <span style={{ color: r.ok ? "var(--green)" : "var(--text3)" }}>{r.ok ? "✅" : "❌"} {r.desc}</span>
+                  <span style={{ fontWeight: 700, color: r.pts > 0 ? "var(--green)" : "var(--text3)" }}>{r.pts > 0 ? `+${r.pts}` : "—"}</span>
+                </div>
+              ))}
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 12px", fontSize: 12, fontWeight: 700 }}>
+                <span style={{ color: "var(--text2)" }}>Total</span>
+                <span style={{ color: "var(--green)" }}>{myPts} pts</span>
+              </div>
+            </div>
+          )}
           <button className="btn btn-secondary btn-sm btn-full" style={{ marginTop: 10 }} onClick={() => setExpanded(e => !e)}>
             {expanded ? "▲ Ocultar" : "👁 Ver predicciones"}
           </button>
