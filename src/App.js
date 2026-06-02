@@ -563,10 +563,22 @@ function RulesBox({ scoring, tournamentName }) {
 
 // ── STATS MODAL ────────────────────────────────────────────────────────────────
 function StatsModal({ participant, stats, onClose, matches, predictions, scoring }) {
-  const matchHistory = Object.values(matches || {})
+  const [tab, setTab] = useState("total");
+
+  const isKnockoutPhase = (phase) => ["r32", "r16", "qf", "sf", "final"].includes(phase);
+
+  const allFinished = Object.values(matches || {})
     .filter(m => m.status === "finished")
-    .sort((a, b) => new Date(b.datetime) - new Date(a.datetime))
-    .slice(0, 10);
+    .sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
+
+  const matchHistory = tab === "groups"
+    ? allFinished.filter(m => m.phase === "groups" || m.phase === "test")
+    : tab === "elim"
+    ? allFinished.filter(m => isKnockoutPhase(m.phase))
+    : allFinished.slice(0, 10);
+
+  const pts = tab === "groups" ? stats.groupsPts : tab === "elim" ? stats.knockoutPoints : stats.total;
+  const ptsLabel = tab === "groups" ? "PTS GRUPOS" : tab === "elim" ? "PTS ELIM." : "PUNTOS";
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -581,16 +593,34 @@ function StatsModal({ participant, stats, onClose, matches, predictions, scoring
           </div>
           <button className="btn btn-secondary btn-sm" style={{ marginLeft: "auto" }} onClick={onClose}>✕</button>
         </div>
+
+        <div className="tabs" style={{ marginBottom: 12 }}>
+          <button className={`tab ${tab === "total" ? "active" : ""}`} onClick={() => setTab("total")}>Total</button>
+          <button className={`tab ${tab === "groups" ? "active" : ""}`} onClick={() => setTab("groups")}>Grupos</button>
+          <button className={`tab ${tab === "elim" ? "active" : ""}`} onClick={() => setTab("elim")}>Eliminatorias</button>
+        </div>
+
         <div className="stat-grid">
-          <div className="stat-box"><div className="stat-val">{stats.total}</div><div className="stat-lbl">PUNTOS</div></div>
+          <div className="stat-box"><div className="stat-val">{pts}</div><div className="stat-lbl">{ptsLabel}</div></div>
           <div className="stat-box"><div className="stat-val">{stats.exact}</div><div className="stat-lbl">EXACTOS</div></div>
           <div className="stat-box"><div className="stat-val">{stats.pct}%</div><div className="stat-lbl">ACIERTOS</div></div>
           <div className="stat-box"><div className="stat-val">{stats.streak}</div><div className="stat-lbl">MEJOR RACHA</div></div>
-          <div className="stat-box"><div className="stat-val">{stats.groupsPts}</div><div className="stat-lbl">PTS GRUPOS</div></div>
-          <div className="stat-box"><div className="stat-val">{stats.elimPts}</div><div className="stat-lbl">PTS ELIM.</div></div>
+          {tab === "total" && <div className="stat-box"><div className="stat-val">{stats.groupsPts}</div><div className="stat-lbl">PTS GRUPOS</div></div>}
+          {tab === "total" && <div className="stat-box"><div className="stat-val">{stats.elimPts}</div><div className="stat-lbl">PTS ELIM.</div></div>}
         </div>
-        {stats.champPts > 0 && <div className="info-box">🏆 +{stats.champPts} puntos por acertar el campeón</div>}
-        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)", marginBottom: 8 }}>ÚLTIMOS PARTIDOS</div>
+
+        {tab !== "elim" && stats.champPts > 0 && <div className="info-box">🏆 +{stats.champPts} puntos por acertar el campeón</div>}
+
+        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)", marginBottom: 8 }}>
+          {tab === "groups" ? "PARTIDOS DE GRUPOS" : tab === "elim" ? "PARTIDOS ELIMINATORIAS" : "ÚLTIMOS PARTIDOS"}
+        </div>
+
+        {matchHistory.length === 0 && (
+          <div style={{ fontSize: 13, color: "var(--text3)", textAlign: "center", padding: "16px 0" }}>
+            No hay partidos terminados en esta fase
+          </div>
+        )}
+
         {matchHistory.map(m => {
           const pred = predictions?.[m.id]?.[participant.id];
           const pts = calcPoints(pred, m.result, scoring);
