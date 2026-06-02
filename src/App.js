@@ -144,7 +144,7 @@ function calcPoints(pred, result, scoring) {
       if (predWinner === "draw") {
         pts += s.winner;
         if (pHome === rHome && pAway === rAway) pts += s.exact;
-        if (pred.pensHome !== undefined && pred.pensAway !== undefined) {
+        if (pred.pensHome != null && pred.pensAway != null) {
           if (parseInt(pred.pensHome) === parseInt(result.pensHome) && parseInt(pred.pensAway) === parseInt(result.pensAway)) {
             pts += s.penalty; // acertó marcador exacto de penales (+3)
           } else {
@@ -629,7 +629,7 @@ function StatsModal({ participant, stats, onClose, matches, predictions, scoring
               <div>
                 <div style={{ fontWeight: 500 }}>{m.homeTeam} vs {m.awayTeam}</div>
                 <div style={{ fontSize: 11, color: "var(--text3)" }}>
-                  Real: {m.result.home}-{m.result.away}{m.result.penalties ? ` (pen: ${m.result.pensHome}-${m.result.pensAway})` : ""} · Mi pred: {pred ? `${pred.home}-${pred.away}${pred.pensHome !== undefined ? ` (pen: ${pred.pensHome}-${pred.pensAway})` : ""}` : "Sin pred."}
+                  Real: {m.result.home}-{m.result.away}{m.result.penalties ? ` (pen: ${m.result.pensHome}-${m.result.pensAway})` : ""} · Mi pred: {pred ? `${pred.home}-${pred.away}${pred.pensHome != null ? ` (pen: ${pred.pensHome}-${pred.pensAway})` : ""}` : "Sin pred."}
                 </div>
               </div>
               {pts !== null && <span className={`pts-badge ${pts >= 4 ? "good" : pts > 0 ? "ok" : "zero"}`}>{pts}p</span>}
@@ -696,12 +696,24 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
           )}
           {isKnockout && predDraw && !locked && (
             <div style={{ marginTop: 8, padding: 10, background: "rgba(255,23,68,0.05)", borderRadius: 8, border: "1px solid rgba(255,23,68,0.12)" }}>
-              <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 6 }}>⚠️ Predices empate → marcador de penales:</div>
-              <div className="score-input-row">
-                <Stepper value={pred.pensHome || 0} onChange={v => setPred(p => ({ ...p, pensHome: v }))} />
-                <span style={{ fontSize: 11, color: "var(--text3)" }}>PEN</span>
-                <Stepper value={pred.pensAway || 0} onChange={v => setPred(p => ({ ...p, pensAway: v }))} />
+              <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 6 }}>⚠️ Predices empate → ¿quieres predecir los penales?</div>
+              <div style={{ display: "flex", gap: 8, marginBottom: pred.predictPens ? 8 : 0 }}>
+                <button onClick={() => setPred(p => ({ ...p, predictPens: true, pensHome: p.pensHome ?? 0, pensAway: p.pensAway ?? 0 }))}
+                  style={{ flex: 1, padding: "6px 0", borderRadius: 8, border: "none", background: pred.predictPens ? "var(--green)" : "var(--border)", color: pred.predictPens ? "#000" : "var(--text2)", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                  ✅ Sí, predecir
+                </button>
+                <button onClick={() => setPred(p => ({ ...p, predictPens: false, pensHome: null, pensAway: null }))}
+                  style={{ flex: 1, padding: "6px 0", borderRadius: 8, border: "none", background: pred.predictPens === false ? "var(--red)" : "var(--border)", color: pred.predictPens === false ? "#fff" : "var(--text2)", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                  ❌ No predecir
+                </button>
               </div>
+              {pred.predictPens && (
+                <div className="score-input-row">
+                  <Stepper value={pred.pensHome ?? 0} onChange={v => setPred(p => ({ ...p, pensHome: v }))} />
+                  <span style={{ fontSize: 11, color: "var(--text3)" }}>PEN</span>
+                  <Stepper value={pred.pensAway ?? 0} onChange={v => setPred(p => ({ ...p, pensAway: v }))} />
+                </div>
+              )}
             </div>
           )}
           {!locked && (
@@ -721,7 +733,7 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
             </div>
           )}
           {locked && !myPred && <div className="warning-box" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>⏰ Sin predicción — 0 puntos</div>}
-          {locked && myPred && <div className="info-box" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>🔒 Predicción guardada · {myPred.home}-{myPred.away}{myPred.pensHome !== undefined ? ` (pen: ${myPred.pensHome}-${myPred.pensAway})` : ""}</div>}
+          {locked && myPred && <div className="info-box" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>🔒 Predicción guardada · {myPred.home}-{myPred.away}{myPred.pensHome != null ? ` (pen: ${myPred.pensHome}-${myPred.pensAway})` : ""}</div>}
           {isAdmin && locked && <AdminSetResult match={match} onSetResult={onSetResult} />}
         </div>
       )}
@@ -751,7 +763,7 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
                   <div key={uid} className="reveal-item">
                     <div className="reveal-name">{p.userName}</div>
                     <div className="reveal-score">
-                      <span>{p.home}-{p.away}{p.pensHome !== undefined ? ` (pen: ${p.pensHome}-${p.pensAway})` : ""}</span>
+                      <span>{p.home}-{p.away}{p.pensHome != null ? ` (pen: ${p.pensHome}-${p.pensAway})` : ""}</span>
                       <span className={`pts-badge ${pts >= 4 ? "good" : pts > 0 ? "ok" : "zero"}`} style={{ fontSize: 10, padding: "1px 6px" }}>{pts}p</span>
                     </div>
                   </div>
