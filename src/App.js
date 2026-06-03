@@ -1409,8 +1409,9 @@ export default function App() {
   function correctResult(matchId, res) { update(dbRef(db, `${tPath("matches")}/${matchId}`), { status: "finished", result: { ...res, status: "finished" } }); showNotif("✅ Resultado corregido"); }
   function setResult(matchId, res) {
     update(dbRef(db, `${tPath("matches")}/${matchId}`), { status: "finished", result: res });
-    // Snapshot automático de posiciones al ingresar resultado
-    ["total", "groups", "elim"].forEach(tab => {
+    const isKnockout = res.phase && ["r32", "r16", "qf", "sf", "final"].includes(res.phase);
+    const tabsToUpdate = isKnockout ? ["total", "elim"] : ["total", "groups"];
+    tabsToUpdate.forEach(tab => {
       const key = `standings_prev_${activeTournamentId}_${tab}`;
       const sorted = sortStandings(standingsBase, tab);
       const snapshot = {};
