@@ -1360,10 +1360,11 @@ export default function App() {
   }
 
   function clearPredictions() {
-    if (!window.confirm("¿Borrar todas las predicciones del torneo activo? Los usuarios y partidos quedan intactos.")) return;
-    remove(dbRef(db, `${tPath("predictions")}`));
+    if (!window.confirm("¿Borrar las predicciones de partidos pendientes? Los partidos terminados conservan sus predicciones.")) return;
+    const pendingMatchIds = Object.values(matches).filter(m => m.status !== "finished").map(m => m.id);
+    pendingMatchIds.forEach(id => remove(dbRef(db, `${tPath("predictions")}/${id}`)));
     remove(dbRef(db, `${tPath("champPredictions")}`));
-    showNotif("🔄 Predicciones eliminadas");
+    showNotif("🔄 Predicciones de partidos pendientes eliminadas");
   }
 
   // ── Predictions ────────────────────────────────────────────────────────────
