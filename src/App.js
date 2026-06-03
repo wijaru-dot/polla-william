@@ -1408,9 +1408,9 @@ export default function App() {
   function editMatch(id, changes) { update(dbRef(db, `${tPath("matches")}/${id}`), changes); showNotif("✅ Partido actualizado"); }
   function correctResult(matchId, res) { update(dbRef(db, `${tPath("matches")}/${matchId}`), { status: "finished", result: { ...res, status: "finished" } }); showNotif("✅ Resultado corregido"); }
   function setResult(matchId, res) {
-    update(dbRef(db, `${tPath("matches")}/${matchId}`), { status: "finished", result: res });
     const isKnockout = res.phase && ["r32", "r16", "qf", "sf", "final"].includes(res.phase);
     const tabsToUpdate = isKnockout ? ["total", "elim"] : ["total", "groups"];
+    // Guardar snapshot ANTES de que el resultado cambie el escalafón
     tabsToUpdate.forEach(tab => {
       const key = `standings_prev_${activeTournamentId}_${tab}`;
       const sorted = sortStandings(standingsBase, tab);
@@ -1418,6 +1418,7 @@ export default function App() {
       sorted.forEach((p, i) => { snapshot[p.id] = i + 1; });
       localStorage.setItem(key, JSON.stringify(snapshot));
     });
+    update(dbRef(db, `${tPath("matches")}/${matchId}`), { status: "finished", result: res });
     showNotif("✅ Resultado ingresado");
   }
 
