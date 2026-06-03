@@ -1342,6 +1342,30 @@ export default function App() {
     showNotif("Torneo eliminado");
   }
 
+  function clearMatches() {
+    if (!window.confirm("¿Borrar todos los partidos y predicciones del torneo activo? Esta acción no se puede deshacer.")) return;
+    remove(dbRef(db, `${tPath("matches")}`));
+    remove(dbRef(db, `${tPath("predictions")}`));
+    remove(dbRef(db, `${tPath("pools")}`));
+    showNotif("🗑️ Partidos y predicciones eliminados");
+  }
+
+  function clearUsers() {
+    if (!window.confirm("¿Borrar todos los usuarios del torneo activo? Los usuarios podrán volver a registrarse con el código del grupo.")) return;
+    remove(dbRef(db, `${tPath("participants")}`));
+    remove(dbRef(db, `${tPath("predictions")}`));
+    remove(dbRef(db, `${tPath("champPredictions")}`));
+    remove(dbRef(db, `${tPath("pools")}`));
+    showNotif("👥 Usuarios eliminados");
+  }
+
+  function clearPredictions() {
+    if (!window.confirm("¿Borrar todas las predicciones del torneo activo? Los usuarios y partidos quedan intactos.")) return;
+    remove(dbRef(db, `${tPath("predictions")}`));
+    remove(dbRef(db, `${tPath("champPredictions")}`));
+    showNotif("🔄 Predicciones eliminadas");
+  }
+
   // ── Predictions ────────────────────────────────────────────────────────────
   function savePrediction(matchId, pred) {
     if (!currentUser?.paidGroups && !currentUser?.paidElim && currentUser?.role !== "admin") return showNotif("⚠️ Pago pendiente");
@@ -1849,6 +1873,13 @@ export default function App() {
                             <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => { setActiveTournamentId(t.id); setAdminTab("matches"); }}>⚽ Ver partidos</button>
                             {<button className="btn btn-danger btn-sm" onClick={() => deleteTournament(t.id)}>🗑</button>}
                           </div>
+                          {t.isActive && (
+                            <div style={{ marginTop: 8, display: "flex", gap: 6 }}>
+                              <button className="btn btn-danger btn-sm" style={{ flex: 1, fontSize: 11 }} onClick={clearMatches}>🗑️ Borrar partidos</button>
+                              <button className="btn btn-danger btn-sm" style={{ flex: 1, fontSize: 11 }} onClick={clearUsers}>👥 Borrar usuarios</button>
+                              <button className="btn btn-danger btn-sm" style={{ flex: 1, fontSize: 11 }} onClick={clearPredictions}>🔄 Borrar predicciones</button>
+                            </div>
+                          )}
                         </div>
                       ))
                     }
