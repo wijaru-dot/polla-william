@@ -614,6 +614,28 @@ function StatsModal({ participant, stats, onClose, matches, predictions, scoring
   const pts = tab === "groups" ? stats.groupsPts : tab === "elim" ? stats.knockoutPoints : stats.total;
   const ptsLabel = tab === "groups" ? "PTS GRUPOS" : tab === "elim" ? "PTS ELIM." : "PUNTOS";
 
+  // Calcular exactos, aciertos y racha filtrados por fase
+  const phaseExact = matchHistory.filter(m => {
+    const pred = predictions?.[m.id]?.[participant.id];
+    if (!pred) return false;
+    return parseInt(pred.home) === parseInt(m.result.home) && parseInt(pred.away) === parseInt(m.result.away);
+  }).length;
+
+  const phaseWins = matchHistory.filter(m => {
+    const pred = predictions?.[m.id]?.[participant.id];
+    if (!pred) return false;
+    const rHome = parseInt(m.result.home), rAway = parseInt(m.result.away);
+    const pHome = parseInt(pred.home), pAway = parseInt(pred.away);
+    const realWinner = rHome > rAway ? "home" : rAway > rHome ? "away" : "draw";
+    const predWinner = pHome > pAway ? "home" : pAway > pHome ? "away" : "draw";
+    return predWinner === realWinner;
+  }).length;
+
+  const phasePct = matchHistory.length > 0 ? Math.round((phaseWins / matchHistory.length) * 100) : 0;
+
+  const displayExact = tab === "total" ? stats.exact : phaseExact;
+  const displayPct = tab === "total" ? stats.pct : phasePct;
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
@@ -636,8 +658,8 @@ function StatsModal({ participant, stats, onClose, matches, predictions, scoring
 
         <div className="stat-grid">
           <div className="stat-box"><div className="stat-val">{pts}</div><div className="stat-lbl">{ptsLabel}</div></div>
-          <div className="stat-box"><div className="stat-val">{stats.exact}</div><div className="stat-lbl">EXACTOS</div></div>
-          <div className="stat-box"><div className="stat-val">{stats.pct}%</div><div className="stat-lbl">ACIERTOS</div></div>
+          <div className="stat-box"><div className="stat-val">{displayExact}</div><div className="stat-lbl">EXACTOS</div></div>
+          <div className="stat-box"><div className="stat-val">{displayPct}%</div><div className="stat-lbl">ACIERTOS</div></div>
           <div className="stat-box"><div className="stat-val">{stats.streak}</div><div className="stat-lbl">MEJOR RACHA</div></div>
           {tab === "total" && <div className="stat-box"><div className="stat-val">{stats.groupsPts}</div><div className="stat-lbl">PTS GRUPOS</div></div>}
           {tab === "total" && <div className="stat-box"><div className="stat-val">{stats.elimPts}</div><div className="stat-lbl">PTS ELIM.</div></div>}
