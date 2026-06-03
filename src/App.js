@@ -1511,6 +1511,8 @@ export default function App() {
   }, [standingsIds]);
 
   function getMovement(playerId, currentPos) {
+    const hasFinishedMatches = Object.values(matches).some(m => m.status === "finished");
+    if (!hasFinishedMatches) return { arrow: "→", color: "var(--gold)", title: "Sin partidos jugados" };
     const prev = prevPositions[playerId];
     if (!prev || prev === currentPos) return { arrow: "→", color: "var(--gold)", title: "Sin cambio" };
     if (prev > currentPos) return { arrow: "↑", color: "var(--green)", title: `Subió ${prev - currentPos} puesto${prev - currentPos > 1 ? "s" : ""}` };
