@@ -1495,15 +1495,18 @@ export default function App() {
   useEffect(() => {
     const saved = localStorage.getItem(standingsKey);
     if (saved) setPrevPositions(JSON.parse(saved));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [standingsKey]);
 
+  const standingsIds = standings.map(p => p.id).join(",");
   useEffect(() => {
     if (standings.length === 0) return;
     const current = {};
     standings.forEach((p, i) => { current[p.id] = i + 1; });
     const saved = localStorage.getItem(standingsKey);
     if (!saved) { localStorage.setItem(standingsKey, JSON.stringify(current)); setPrevPositions(current); }
-  }, [standings.map(p => p.id).join(",")]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [standingsIds]);
 
   function getMovement(playerId, currentPos) {
     const prev = prevPositions[playerId];
