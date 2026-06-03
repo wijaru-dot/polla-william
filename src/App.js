@@ -1407,7 +1407,18 @@ export default function App() {
   function deleteMatch(id) { remove(dbRef(db, `${tPath("matches")}/${id}`)); showNotif("Partido eliminado"); }
   function editMatch(id, changes) { update(dbRef(db, `${tPath("matches")}/${id}`), changes); showNotif("✅ Partido actualizado"); }
   function correctResult(matchId, res) { update(dbRef(db, `${tPath("matches")}/${matchId}`), { status: "finished", result: { ...res, status: "finished" } }); showNotif("✅ Resultado corregido"); }
-  function setResult(matchId, res) { update(dbRef(db, `${tPath("matches")}/${matchId}`), { status: "finished", result: res }); showNotif("✅ Resultado ingresado"); }
+  function setResult(matchId, res) {
+    update(dbRef(db, `${tPath("matches")}/${matchId}`), { status: "finished", result: res });
+    // Snapshot automático de posiciones al ingresar resultado
+    ["total", "groups", "elim"].forEach(tab => {
+      const key = `standings_prev_${activeTournamentId}_${tab}`;
+      const sorted = sortStandings(standingsBase, tab);
+      const snapshot = {};
+      sorted.forEach((p, i) => { snapshot[p.id] = i + 1; });
+      localStorage.setItem(key, JSON.stringify(snapshot));
+    });
+    showNotif("✅ Resultado ingresado");
+  }
 
   function toggleActive(p) { update(dbRef(db, `${tPath("participants")}/${p.id}`), { active: !p.active }); showNotif(p.active ? "⏸ Participante suspendido" : "▶️ Participante reactivado"); }
 
@@ -1476,6 +1487,30 @@ export default function App() {
   };
 
   const standings = sortStandings(standingsBase, standTab);
+
+  // Flechas de movimiento — guarda posiciones previas en localStorage
+  const standingsKey = `standings_prev_${activeTournamentId}_${standTab}`;
+  const [prevPositions, setPrevPositions] = useState({});
+
+  useEffect(() => {
+    const saved = localStorage.getItem(standingsKey);
+    if (saved) setPrevPositions(JSON.parse(saved));
+  }, [standingsKey]);
+
+  useEffect(() => {
+    if (standings.length === 0) return;
+    const current = {};
+    standings.forEach((p, i) => { current[p.id] = i + 1; });
+    const saved = localStorage.getItem(standingsKey);
+    if (!saved) { localStorage.setItem(standingsKey, JSON.stringify(current)); setPrevPositions(current); }
+  }, [standings.map(p => p.id).join(",")]);
+
+  function getMovement(playerId, currentPos) {
+    const prev = prevPositions[playerId];
+    if (!prev || prev === currentPos) return { arrow: "→", color: "var(--gold)", title: "Sin cambio" };
+    if (prev > currentPos) return { arrow: "↑", color: "var(--green)", title: `Subió ${prev - currentPos} puesto${prev - currentPos > 1 ? "s" : ""}` };
+    return { arrow: "↓", color: "var(--red)", title: `Bajó ${currentPos - prev} puesto${currentPos - prev > 1 ? "s" : ""}` };
+  }
 
   const isKnockoutPhase = (phase) => ["r32", "r16", "qf", "sf", "final"].includes(phase);
   const upcomingMatches = Object.values(matches).filter(m => m.status !== "finished" && (m.enabled || m.phase === "test" || isKnockoutPhase(m.phase) || isAdmin)).sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
@@ -1711,8 +1746,11 @@ export default function App() {
                 </div>
                 {standings.length === 0
                   ? <div className="empty"><div className="empty-icon">👥</div><div className="empty-text">Sin participantes activos aún</div></div>
-                  : standings.map((p, i) => {
+                  : <>
+                  {standings.map((p, i) => {
                     const pts = standTab === "groups" ? p.groupsPts : standTab === "elim" ? p.knockoutPoints : p.total;
+                    const currentPos = i + 1;
+                    const mov = getMovement(p.id, currentPos);
                     return (
                       <div key={p.id} className={`standings-row ${i === 0 ? "top1" : i === 1 ? "top2" : ""}`} onClick={() => setSelectedParticipant(p)}>
                         <span className={`rank ${i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : ""}`}>{i + 1}</span>
@@ -1726,10 +1764,12 @@ export default function App() {
                           </div>
                           <div className="standing-stats">🎯 {p.exact} exactos · ✅ {p.pct}% · 🔥 {p.streak} racha</div>
                         </div>
+                        <span title={mov.title} style={{ fontSize: 18, fontWeight: 700, color: mov.color, minWidth: 20, textAlign: "center" }}>{mov.arrow}</span>
                         <div className="standing-pts">{pts}</div>
                       </div>
                     );
                   })}
+                  </>}
                 <div style={{ height: 1, background: "var(--border)", margin: "14px 0" }} />
                 <RulesBox scoring={scoring} tournamentName={activeTournament?.name} />
               </div>
