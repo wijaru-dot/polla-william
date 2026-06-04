@@ -1199,13 +1199,17 @@ export default function App() {
     const unsub = onValue(dbRef(db, "tournaments"), snap => {
       const data = snap.val() || {};
       setTournaments(data);
-      // Auto-select active tournament
-      const active = Object.values(data).find(t => t.isActive);
-      if (active && !activeTournamentId) setActiveTournamentId(active.id);
-      else if (!activeTournamentId && Object.keys(data).length > 0) setActiveTournamentId(Object.keys(data)[0]);
+      // Auto-select: only if nothing is selected yet
+      setActiveTournamentId(prev => {
+        if (prev && data[prev]) return prev; // ya hay uno válido, no cambiar
+        const active = Object.values(data).find(t => t.isActive);
+        if (active) return active.id;
+        const keys = Object.keys(data);
+        return keys.length > 0 ? keys[0] : null;
+      });
     });
     return () => unsub();
-  }, [activeTournamentId]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Load data for active tournament ───────────────────────────────────────
   useEffect(() => {
@@ -1628,6 +1632,30 @@ export default function App() {
               <button className="btn btn-gold btn-full" onClick={handleAdminLogin} disabled={authLoading}>{authLoading ? "⏳..." : "🔑 Entrar como Admin"}</button>
             </div>
           )}
+        </div>
+        {notif && <div className="notif">{notif.msg}</div>}
+      </div>
+    </>
+  );
+
+  // ── No tournaments (admin only) ────────────────────────────────────────────
+  if (isAdmin && !activeTournamentId && Object.keys(tournaments).length === 0) return (
+    <>
+      <style>{css}</style>
+      <div className={darkMode ? "" : "light"}>
+        <div className="app">
+          <header className="header">
+            <div><div className="header-title">🐔 ¡Péguele a la Polla!</div></div>
+          </header>
+          <div className="content" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>🏆</div>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 24, color: "var(--gold)", marginBottom: 8 }}>Sin torneos activos</div>
+            <div style={{ fontSize: 13, color: "var(--text2)", marginBottom: 24, textAlign: "center" }}>Crea un nuevo torneo para comenzar</div>
+            <button className="btn btn-gold" onClick={() => { setActiveTab("admin"); setAdminTab("tournaments"); }}>➕ Crear torneo</button>
+          </div>
+          <nav className="nav">
+            <button className="nav-btn" onClick={() => { setActiveTab("admin"); setAdminTab("tournaments"); }}><span className="icon">⚙️</span>Admin</button>
+          </nav>
         </div>
         {notif && <div className="notif">{notif.msg}</div>}
       </div>
