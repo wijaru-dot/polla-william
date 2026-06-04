@@ -1973,7 +1973,7 @@ export default function App() {
                             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                               <span style={{ fontSize: 24 }}>{t.icon}</span>
                               <div>
-                                <div className="tournament-name">{t.name}</div>
+                                <div className="tournament-name">{t.name || "⚠️ Sin nombre"}</div>
                                 <div className="tournament-meta">{TOURNAMENT_TYPES[t.type]?.label || t.type} · {t.year}</div>
                               </div>
                             </div>
