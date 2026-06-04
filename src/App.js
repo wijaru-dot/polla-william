@@ -1442,6 +1442,25 @@ export default function App() {
     showNotif(`✅ ${added} partidos cargados`);
   }
 
+  function loadFriendlyMatches() {
+    const AMISTOSOS = [
+      { id: "ami001", homeTeam: "Bélgica",  awayTeam: "Túnez",     datetime: "2026-06-06T13:00:00Z", phase: "test", status: "upcoming", result: null },
+      { id: "ami002", homeTeam: "Portugal", awayTeam: "Chile",      datetime: "2026-06-06T17:45:00Z", phase: "test", status: "upcoming", result: null },
+      { id: "ami003", homeTeam: "EE.UU.",   awayTeam: "Alemania",   datetime: "2026-06-06T18:30:00Z", phase: "test", status: "upcoming", result: null },
+      { id: "ami004", homeTeam: "Brasil",   awayTeam: "Egipto",     datetime: "2026-06-06T22:00:00Z", phase: "test", status: "upcoming", result: null },
+      { id: "ami005", homeTeam: "Grecia",   awayTeam: "Italia",     datetime: "2026-06-07T19:00:00Z", phase: "test", status: "upcoming", result: null },
+      { id: "ami006", homeTeam: "Marruecos",awayTeam: "Noruega",    datetime: "2026-06-07T19:00:00Z", phase: "test", status: "upcoming", result: null },
+      { id: "ami007", homeTeam: "Ecuador",  awayTeam: "Guatemala",  datetime: "2026-06-07T20:00:00Z", phase: "test", status: "upcoming", result: null },
+      { id: "ami008", homeTeam: "Colombia", awayTeam: "Jordania",   datetime: "2026-06-07T23:00:00Z", phase: "test", status: "upcoming", result: null },
+    ];
+    const existing = Object.values(matches);
+    let added = 0;
+    AMISTOSOS.forEach(m => {
+      if (!existing.find(e => e.id === m.id)) { fbSet(dbRef(db, `${tPath("matches")}/${m.id}`), m); added++; }
+    });
+    showNotif(`✅ ${added} amistosos cargados`);
+  }
+
   function deleteMatch(id) { remove(dbRef(db, `${tPath("matches")}/${id}`)); showNotif("Partido eliminado"); }
   function editMatch(id, changes) { update(dbRef(db, `${tPath("matches")}/${id}`), changes); showNotif("✅ Partido actualizado"); }
   function correctResult(matchId, res) { update(dbRef(db, `${tPath("matches")}/${matchId}`), { status: "finished", result: { ...res, status: "finished" } }); showNotif("✅ Resultado corregido"); }
@@ -1969,6 +1988,7 @@ export default function App() {
                     {activeTournament?.type === "worldcup" && (
                       <button className="btn btn-gold btn-full" style={{ marginBottom: 12 }} onClick={loadWorldCupMatches}>🌍 Cargar partidos Mundial 2026</button>
                     )}
+                    <button className="btn btn-secondary btn-full" style={{ marginBottom: 12 }} onClick={loadFriendlyMatches}>🧪 Cargar amistosos de prueba</button>
                     <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
                       <button className="btn btn-danger btn-sm" style={{ flex: 1 }} onClick={() => { if(window.confirm("¿Eliminar partidos de prueba?")) clearTestMatches(); }}>🧹 Limpiar prueba</button>
                     </div>
