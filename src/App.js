@@ -172,7 +172,7 @@ function calcPoints(pred, result, scoring) {
 
 function calcChampPoints(pred, winner, champPoints) {
   if (!pred || !winner) return 0;
-  return pred === winner ? (champPoints || 10) : 0;
+  return pred.trim().toLowerCase() === winner.trim().toLowerCase() ? (champPoints || 10) : 0;
 }
 
 function computeStats(participantId, matches, predictions, champPredictions, tournamentWinner, scoring) {
