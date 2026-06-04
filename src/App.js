@@ -1531,6 +1531,14 @@ export default function App() {
     showNotif(`🔑 Nuevo código: ${code}`);
   }
 
+  // ── No tournaments: redirect admin to create one ──────────────────────────
+  useEffect(() => {
+    if (currentUser?.role === "admin" && !activeTournamentId && Object.keys(tournaments).length === 0) {
+      setActiveTab("admin");
+      setAdminTab("tournaments");
+    }
+  }, [currentUser, activeTournamentId, tournaments]);
+
   // ── Recalculate pools ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!participants.length || !activeTournamentId) return;
@@ -1637,14 +1645,6 @@ export default function App() {
       </div>
     </>
   );
-
-  // ── No tournaments: redirect admin to create one ──────────────────────────
-  useEffect(() => {
-    if (currentUser?.role === "admin" && !activeTournamentId && Object.keys(tournaments).length === 0) {
-      setActiveTab("admin");
-      setAdminTab("tournaments");
-    }
-  }, [currentUser, activeTournamentId, tournaments]);
 
   // ── MAIN ───────────────────────────────────────────────────────────────────
   return (
