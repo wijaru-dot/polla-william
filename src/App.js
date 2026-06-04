@@ -1755,7 +1755,6 @@ export default function App() {
                   : <>
                   {standings.map((p, i) => {
                     const pts = standTab === "groups" ? p.groupsPts : standTab === "elim" ? p.knockoutPoints : p.total;
-                    const currentPos = i + 1;
                     return (
                       <div key={p.id} className={`standings-row ${i === 0 ? "top1" : i === 1 ? "top2" : ""}`} onClick={() => setSelectedParticipant(p)}>
                         <span className={`rank ${i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : ""}`}>{i + 1}</span>
