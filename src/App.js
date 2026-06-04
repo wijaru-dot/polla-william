@@ -1446,7 +1446,21 @@ export default function App() {
   function correctResult(matchId, res) { update(dbRef(db, `${tPath("matches")}/${matchId}`), { status: "finished", result: { ...res, status: "finished" } }); showNotif("✅ Resultado corregido"); }
   function setResult(matchId, res) {
     update(dbRef(db, `${tPath("matches")}/${matchId}`), { status: "finished", result: res });
-    showNotif("✅ Resultado ingresado");
+    // Si es la final, asignar el ganador automáticamente como campeón
+    const match = matches[matchId];
+    if (match?.phase === "final") {
+      const winner = parseInt(res.home) > parseInt(res.away)
+        ? match.homeTeam
+        : parseInt(res.away) > parseInt(res.home)
+        ? match.awayTeam
+        : res.pensHome > res.pensAway
+        ? match.homeTeam
+        : match.awayTeam;
+      update(dbRef(db, `${tPath("settings")}`), { tournamentWinner: winner });
+      showNotif(`🏆 ¡${winner} es el campeón! Polla del campeón actualizada.`);
+    } else {
+      showNotif("✅ Resultado ingresado");
+    }
   }
 
   function toggleActive(p) { update(dbRef(db, `${tPath("participants")}/${p.id}`), { active: !p.active }); showNotif(p.active ? "⏸ Participante suspendido" : "▶️ Participante reactivado"); }
