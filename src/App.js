@@ -657,7 +657,7 @@ function StatsModal({ participant, stats, onClose, matches, predictions, scoring
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="avatar-lg">
-            {participant.avatar ? <img src={getAvatarUrl(participant.avatar)} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} /> : participant.name[0].toUpperCase()}
+            {participant.avatar ? <img src={getAvatarUrl(participant.avatar)} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} /> : (participant.name || "?")[0].toUpperCase()}
           </div>
           <div>
             <div style={{ fontWeight: 700, fontSize: 18 }}>{participant.name}</div>
@@ -1096,7 +1096,7 @@ function ProfileMenu({ user, onLogout, onClose, onChangeAvatar }) {
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid var(--border)" }}>
           <div>
             <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--gold)", color: "var(--green-deep)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 18, overflow: "hidden", cursor: "pointer" }} onClick={() => { onChangeAvatar(); onClose(); }}>
-            {user.avatar ? <img src={getAvatarUrl(user.avatar)} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} /> : user.name[0].toUpperCase()}
+            {user.avatar ? <img src={getAvatarUrl(user.avatar)} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} /> : (user.name || "?")[0].toUpperCase()}
           </div>
           </div>
           {user.role !== "admin" && (
@@ -1681,12 +1681,12 @@ export default function App() {
           <header className="header">
             <div>
               <div className="header-title">🐔 ¡Péguele a la Polla!</div>
-              <div className="header-sub">{activeTournament ? `${activeTournament.icon} ${activeTournament.name.toUpperCase()} ${activeTournament.year}` : "MUNDIAL 2026"}</div>
+              <div className="header-sub">{activeTournament ? `${activeTournament.icon} ${(activeTournament.name || "").toUpperCase()} ${activeTournament.year}` : "MUNDIAL 2026"}</div>
             </div>
             <div className="header-right">
               <button className="dark-toggle" onClick={() => setDarkMode(d => !d)}>{darkMode ? "☀️" : "🌙"}</button>
               <div className="avatar" onClick={() => setShowProfileMenu(true)}>
-                {currentUser.avatar ? <img src={getAvatarUrl(currentUser.avatar)} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} /> : currentUser.name[0].toUpperCase()}
+                {currentUser.avatar ? <img src={getAvatarUrl(currentUser.avatar)} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} /> : (currentUser.name || "?")[0].toUpperCase()}
               </div>
             </div>
           </header>
@@ -1826,7 +1826,7 @@ export default function App() {
                       <div key={p.id} className={`standings-row ${i === 0 ? "top1" : i === 1 ? "top2" : ""}`} onClick={() => setSelectedParticipant(p)}>
                         <span className={`rank ${i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : ""}`}>{i + 1}</span>
                       <div className="avatar" style={{ width: 48, height: 48, fontSize: 16, flexShrink: 0 }}>
-                        {p.avatar ? <img src={getAvatarUrl(p.avatar)} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} /> : p.name[0].toUpperCase()}
+                        {p.avatar ? <img src={getAvatarUrl(p.avatar)} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} /> : (p.name || "?")[0].toUpperCase()}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div className="standing-name" style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -1905,7 +1905,7 @@ export default function App() {
                   {participants.filter(p => p.role !== "admin").map(p => (
                     <div key={p.id} style={{ background: "var(--card2)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px", marginBottom: 8 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                        <div className="avatar" style={{ width: 30, height: 30, fontSize: 12 }}>{p.name[0].toUpperCase()}</div>
+                        <div className="avatar" style={{ width: 30, height: 30, fontSize: 12 }}>{(p.name || "?")[0].toUpperCase()}</div>
                         <div style={{ flex: 1 }}><div style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</div><div style={{ fontSize: 10, color: "var(--text3)" }}>{p.active ? "Activo" : "Suspendido"}</div></div>
                         <button className="btn btn-secondary btn-sm" onClick={() => toggleActive(p)}>{p.active ? "⏸" : "▶️"}</button>
                       </div>
