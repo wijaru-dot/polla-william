@@ -1231,7 +1231,6 @@ export default function App() {
     unsubs.push(onValue(dbRef(db, `${path}/settings`), snap => {
       const s = snap.val();
       if (s) setSettings(s);
-      else fbSet(dbRef(db, `${path}/settings`), { quotaGroups: 50000, quotaElim: 50000, currency: "COP", groupCode: genCode(), tournamentWinner: "", scoring: { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1, champion: 10 }, prizeFirst: 70, prizeSecond: 30 });
     }));
     unsubs.push(onValue(dbRef(db, `${path}/pools`), snap => setPools(snap.val() || { groups: 0, eliminations: 0 })));
     return () => unsubs.forEach(u => u());
