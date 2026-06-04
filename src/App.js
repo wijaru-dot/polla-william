@@ -1638,29 +1638,13 @@ export default function App() {
     </>
   );
 
-  // ── No tournaments (admin only) ────────────────────────────────────────────
-  if (isAdmin && !activeTournamentId && Object.keys(tournaments).length === 0) return (
-    <>
-      <style>{css}</style>
-      <div className={darkMode ? "" : "light"}>
-        <div className="app">
-          <header className="header">
-            <div><div className="header-title">🐔 ¡Péguele a la Polla!</div></div>
-          </header>
-          <div className="content" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>🏆</div>
-            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 24, color: "var(--gold)", marginBottom: 8 }}>Sin torneos activos</div>
-            <div style={{ fontSize: 13, color: "var(--text2)", marginBottom: 24, textAlign: "center" }}>Crea un nuevo torneo para comenzar</div>
-            <button className="btn btn-gold" onClick={() => { setActiveTab("admin"); setAdminTab("tournaments"); }}>➕ Crear torneo</button>
-          </div>
-          <nav className="nav">
-            <button className="nav-btn" onClick={() => { setActiveTab("admin"); setAdminTab("tournaments"); }}><span className="icon">⚙️</span>Admin</button>
-          </nav>
-        </div>
-        {notif && <div className="notif">{notif.msg}</div>}
-      </div>
-    </>
-  );
+  // ── No tournaments: redirect admin to create one ──────────────────────────
+  useEffect(() => {
+    if (isAdmin && !activeTournamentId && Object.keys(tournaments).length === 0) {
+      setActiveTab("admin");
+      setAdminTab("tournaments");
+    }
+  }, [isAdmin, activeTournamentId, tournaments]);
 
   // ── MAIN ───────────────────────────────────────────────────────────────────
   return (
