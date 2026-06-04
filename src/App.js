@@ -633,8 +633,21 @@ function StatsModal({ participant, stats, onClose, matches, predictions, scoring
 
   const phasePct = matchHistory.length > 0 ? Math.round((phaseWins / matchHistory.length) * 100) : 0;
 
-  const displayExact = tab === "total" ? stats.exact : phaseExact;
-  const displayPct = tab === "total" ? stats.pct : phasePct;
+  const phaseStreak = matchHistory.length === 0 ? 0 : (() => {
+    let max = 0, cur = 0;
+    [...matchHistory].reverse().forEach(m => {
+      const pred = predictions?.[m.id]?.[participant.id];
+      if (!pred) { cur = 0; return; }
+      const rHome = parseInt(m.result.home), rAway = parseInt(m.result.away);
+      const pHome = parseInt(pred.home), pAway = parseInt(pred.away);
+      const realWinner = rHome > rAway ? "home" : rAway > rHome ? "away" : "draw";
+      const predWinner = pHome > pAway ? "home" : pAway > pHome ? "away" : "draw";
+      if (predWinner === realWinner) { cur++; max = Math.max(max, cur); } else cur = 0;
+    });
+    return max;
+  })();
+
+  const displayStreak = tab === "total" ? stats.streak : phaseStreak;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -660,7 +673,7 @@ function StatsModal({ participant, stats, onClose, matches, predictions, scoring
           <div className="stat-box"><div className="stat-val">{pts}</div><div className="stat-lbl">{ptsLabel}</div></div>
           <div className="stat-box"><div className="stat-val">{displayExact}</div><div className="stat-lbl">EXACTOS</div></div>
           <div className="stat-box"><div className="stat-val">{displayPct}%</div><div className="stat-lbl">ACIERTOS</div></div>
-          <div className="stat-box"><div className="stat-val">{stats.streak}</div><div className="stat-lbl">MEJOR RACHA</div></div>
+          <div className="stat-box"><div className="stat-val">{displayStreak}</div><div className="stat-lbl">MEJOR RACHA</div></div>
           {tab === "total" && <div className="stat-box"><div className="stat-val">{stats.groupsPts}</div><div className="stat-lbl">PTS GRUPOS</div></div>}
           {tab === "total" && <div className="stat-box"><div className="stat-val">{stats.elimPts}</div><div className="stat-lbl">PTS ELIM.</div></div>}
         </div>
