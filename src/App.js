@@ -1353,8 +1353,8 @@ export default function App() {
       isActive: Object.keys(tournaments).length === 0,
       createdAt: new Date().toISOString(),
     };
-    fbSet(dbRef(db, `tournaments/${id}`), {
-      ...tournament,
+    fbSet(dbRef(db, `tournaments/${id}`), tournament);
+    update(dbRef(db, `tournaments/${id}`), {
       settings: {
         quotaGroups: 50000, quotaElim: 50000, currency: "COP",
         groupCode: code, tournamentWinner: "",
