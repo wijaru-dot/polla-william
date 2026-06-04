@@ -1353,13 +1353,16 @@ export default function App() {
       isActive: Object.keys(tournaments).length === 0,
       createdAt: new Date().toISOString(),
     };
-    fbSet(dbRef(db, `tournaments/${id}`), tournament);
-    fbSet(dbRef(db, `tournaments/${id}/settings`), {
-      quotaGroups: 50000, quotaElim: 50000, currency: "COP",
-      groupCode: code, tournamentWinner: "",
-      scoring: { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1, champion: 10 },
-      prizeFirst: 70, prizeSecond: 30
-    });
+    const fullTournament = {
+      ...tournament,
+      settings: {
+        quotaGroups: 50000, quotaElim: 50000, currency: "COP",
+        groupCode: code, tournamentWinner: "",
+        scoring: { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1, champion: 10 },
+        prizeFirst: 70, prizeSecond: 30
+      }
+    };
+    fbSet(dbRef(db, `tournaments/${id}`), fullTournament);
     setNewTournament({ name: "", type: "champions", year: new Date().getFullYear() });
     setActiveTournamentId(id);
     showNotif(`✅ Torneo "${tournament.name}" creado`);
