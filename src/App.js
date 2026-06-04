@@ -172,7 +172,8 @@ function calcPoints(pred, result, scoring) {
 
 function calcChampPoints(pred, winner, champPoints) {
   if (!pred || !winner) return 0;
-  return pred.trim().toLowerCase() === winner.trim().toLowerCase() ? (champPoints || 10) : 0;
+  const normalize = s => s.trim().toLowerCase().replace(/\s+/g, "");
+  return normalize(pred) === normalize(winner) ? (champPoints || 10) : 0;
 }
 
 function computeStats(participantId, matches, predictions, champPredictions, tournamentWinner, scoring) {
@@ -768,7 +769,7 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
     <div className="match-card">
       <div className="match-meta">
         <span>{fmtDate(match.datetime)}{match.stadium ? ` · ${match.stadium}` : ""}</span>
-        <span className={`phase-badge ${phaseClass}`}>{match.group ? `Grupo ${match.group}` : getPhaseLabel(match.phase)}</span>
+        <span className={`phase-badge ${phaseClass}`}>{match.phase === "groups" && match.group ? `Grupo ${match.group}` : getPhaseLabel(match.phase)}</span>
       </div>
       <div className="match-teams">
         <span className="team-name">{TEAM_FLAGS[match.homeTeam] || "🏳️"} {match.homeTeam}</span>
@@ -1145,7 +1146,7 @@ function ChampPrediction({ userId, champPredictions, tournamentWinner, onSave, m
           </div>
           <div style={{ display: "flex", gap: 6 }}>
             {!hasStarted && <button className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>✏️</button>}
-            {tournamentWinner && myPred.team === tournamentWinner && <span className="pts-badge good">🏆 +{champPts} pts</span>}
+            {tournamentWinner && myPred.team && myPred.team.trim().toLowerCase().replace(/\s+/g,"") === tournamentWinner.trim().toLowerCase().replace(/\s+/g,"") && <span className="pts-badge good">🏆 +{champPts} pts</span>}
           </div>
         </div>
       ) : (
@@ -1445,15 +1446,16 @@ export default function App() {
   function editMatch(id, changes) { update(dbRef(db, `${tPath("matches")}/${id}`), changes); showNotif("✅ Partido actualizado"); }
   function correctResult(matchId, res) { update(dbRef(db, `${tPath("matches")}/${matchId}`), { status: "finished", result: { ...res, status: "finished" } }); showNotif("✅ Resultado corregido"); }
   function setResult(matchId, res) {
-    update(dbRef(db, `${tPath("matches")}/${matchId}`), { status: "finished", result: res });
-    // Si es la final, asignar el ganador automáticamente como campeón
     const match = matches[matchId];
+    const fullResult = { ...res, status: "finished", phase: match?.phase || res.phase };
+    update(dbRef(db, `${tPath("matches")}/${matchId}`), { status: "finished", result: fullResult });
+    // Si es la final, asignar el ganador automáticamente como campeón
     if (match?.phase === "final") {
       const winner = parseInt(res.home) > parseInt(res.away)
         ? match.homeTeam
         : parseInt(res.away) > parseInt(res.home)
         ? match.awayTeam
-        : res.pensHome > res.pensAway
+        : parseInt(res.pensHome) > parseInt(res.pensAway)
         ? match.homeTeam
         : match.awayTeam;
       update(dbRef(db, `${tPath("settings")}`), { tournamentWinner: winner });
@@ -2023,9 +2025,9 @@ export default function App() {
                         : Object.entries(champPredictions).map(([uid, cp]) => (
                           <div key={uid} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--border)", fontSize: 13 }}>
                             <span>{cp.userName}</span>
-                            <span style={{ color: settings.tournamentWinner && cp.team === settings.tournamentWinner ? "var(--gold)" : "var(--text2)" }}>
+                            <span style={{ color: settings.tournamentWinner && cp.team && cp.team.trim().toLowerCase().replace(/\s+/g,"") === settings.tournamentWinner.trim().toLowerCase().replace(/\s+/g,"") ? "var(--gold)" : "var(--text)" }}>
                               {settings.tournamentWinner ? cp.team : "🔒 Oculta"}
-                              {settings.tournamentWinner && cp.team === settings.tournamentWinner && " 🏆"}
+                              {settings.tournamentWinner && cp.team && cp.team.trim().toLowerCase().replace(/\s+/g,"") === settings.tournamentWinner.trim().toLowerCase().replace(/\s+/g,"") && " 🏆"}
                             </span>
                           </div>
                         ))}
