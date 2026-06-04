@@ -648,6 +648,8 @@ function StatsModal({ participant, stats, onClose, matches, predictions, scoring
   })();
 
   const displayStreak = tab === "total" ? stats.streak : phaseStreak;
+  const displayExact = tab === "total" ? stats.exact : phaseExact;
+  const displayPct = tab === "total" ? stats.pct : phasePct;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
