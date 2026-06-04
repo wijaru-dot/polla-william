@@ -1640,11 +1640,11 @@ export default function App() {
 
   // ── No tournaments: redirect admin to create one ──────────────────────────
   useEffect(() => {
-    if (isAdmin && !activeTournamentId && Object.keys(tournaments).length === 0) {
+    if (currentUser?.role === "admin" && !activeTournamentId && Object.keys(tournaments).length === 0) {
       setActiveTab("admin");
       setAdminTab("tournaments");
     }
-  }, [isAdmin, activeTournamentId, tournaments]);
+  }, [currentUser, activeTournamentId, tournaments]);
 
   // ── MAIN ───────────────────────────────────────────────────────────────────
   return (
