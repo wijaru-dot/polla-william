@@ -1373,9 +1373,13 @@ export default function App() {
   function deleteTournament(id) {
     if (!window.confirm("¿Eliminar este torneo y todos sus datos?")) return;
     remove(dbRef(db, `tournaments/${id}`));
-    if (activeTournamentId === id) {
-      const remaining = Object.keys(tournaments).filter(t => t !== id);
-      setActiveTournamentId(remaining[0] || null);
+    const remaining = Object.keys(tournaments).filter(t => t !== id);
+    if (remaining.length > 0) {
+      setActiveTournamentId(remaining[0]);
+    } else {
+      setActiveTournamentId(null);
+      setActiveTab("admin");
+      setAdminTab("tournaments");
     }
     showNotif("Torneo eliminado");
   }
