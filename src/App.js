@@ -1521,7 +1521,8 @@ export default function App() {
       getPts(b) - getPts(a) ||
       b.exact - a.exact ||
       b.wins - a.wins ||
-      a.noPred - b.noPred
+      a.noPred - b.noPred ||
+      a.name.localeCompare(b.name)
     );
   };
 
