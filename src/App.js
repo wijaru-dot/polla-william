@@ -144,8 +144,13 @@ function calcPoints(pred, result, scoring) {
       if (predWinner === "draw") {
         pts += s.winner;
         if (pHome === rHome && pAway === rAway) pts += s.exact;
-        if (pred.pensHome !== undefined && pred.pensAway !== undefined) {
-          if (parseInt(pred.pensHome) === parseInt(result.pensHome) && parseInt(pred.pensAway) === parseInt(result.pensAway)) pts += s.penalty;
+        if (pred.pensHome != null && pred.pensAway != null) {
+          if (parseInt(pred.pensHome) === parseInt(result.pensHome) && parseInt(pred.pensAway) === parseInt(result.pensAway)) {
+            pts += s.penalty; // acertó marcador exacto de penales (+3)
+          } else {
+            const predPensWinner = parseInt(pred.pensHome) > parseInt(pred.pensAway) ? "home" : "away";
+            if (predPensWinner === realPensWinner) pts += s.wrongPenalty; // acertó ganador en penales (+1)
+          }
         }
       } else {
         if (predWinner === realPensWinner) pts += s.wrongPenalty;
@@ -167,7 +172,8 @@ function calcPoints(pred, result, scoring) {
 
 function calcChampPoints(pred, winner, champPoints) {
   if (!pred || !winner) return 0;
-  return pred === winner ? (champPoints || 10) : 0;
+  const normalize = s => s.trim().toLowerCase().replace(/\s+/g, "");
+  return normalize(pred) === normalize(winner) ? (champPoints || 10) : 0;
 }
 
 function computeStats(participantId, matches, predictions, champPredictions, tournamentWinner, scoring) {
@@ -191,8 +197,9 @@ function computeStats(participantId, matches, predictions, champPredictions, tou
   });
 
   total += champPts;
+  const knockoutPoints = elimPts + champPts;
   const pct = played > 0 ? Math.round((wins / played) * 100) : 0;
-  return { total, exact, wins, groupsPts, elimPts, champPts, streak: maxStreak, pct, played, noPred, totalMatches };
+  return { total, exact, wins, groupsPts, elimPts, knockoutPoints, champPts, streak: maxStreak, pct, played, noPred, totalMatches };
 }
 
 // ── CSS ────────────────────────────────────────────────────────────────────────
@@ -534,27 +541,116 @@ function ScoringConfig({ scoring, onChange }) {
 // ── RULES BOX ─────────────────────────────────────────────────────────────────
 function RulesBox({ scoring, tournamentName }) {
   const s = scoring || { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1, champion: 10 };
+  const [showExamples, setShowExamples] = useState(false);
+  const examples = [
+    { id: "B", pred: "2-2 sin penales", pts: 2, rows: [{ ok: true, desc: "Acertó empate", pts: 2 }, { ok: false, desc: "Marcador incorrecto", pts: 0 }] },
+    { id: "C", pred: "1-1 sin penales", pts: 5, rows: [{ ok: true, desc: "Acertó empate", pts: 2 }, { ok: true, desc: "Marcador exacto", pts: 3 }] },
+    { id: "D", pred: "2-2 + local gana pen", pts: 3, rows: [{ ok: true, desc: "Acertó empate", pts: 2 }, { ok: false, desc: "Marcador incorrecto", pts: 0 }, { ok: true, desc: "Acertó ganador en penales", pts: 1 }] },
+    { id: "E", pred: "1-1 + local gana pen", pts: 6, rows: [{ ok: true, desc: "Acertó empate", pts: 2 }, { ok: true, desc: "Marcador exacto", pts: 3 }, { ok: true, desc: "Acertó ganador en penales", pts: 1 }] },
+    { id: "F", pred: "2-2 + pen 5-3 exacto", pts: 5, rows: [{ ok: true, desc: "Acertó empate", pts: 2 }, { ok: false, desc: "Marcador incorrecto", pts: 0 }, { ok: true, desc: "Penales exactos", pts: 3 }] },
+    { id: "G", pred: "1-1 + pen 5-3 exacto", pts: 8, rows: [{ ok: true, desc: "Acertó empate", pts: 2 }, { ok: true, desc: "Marcador exacto", pts: 3 }, { ok: true, desc: "Penales exactos", pts: 3 }] },
+    { id: "H", pred: "2-0 local directo", pts: 1, rows: [{ ok: true, desc: "Acertó ganador final (fue a pen)", pts: 1 }] },
+    { id: "I", pred: "0-2 visitante", pts: 0, rows: [{ ok: false, desc: "No acertó el resultado", pts: 0 }] },
+  ];
   return (
     <div className="rules-box">
       <div className="rules-title">📋 Reglas de Puntuación{tournamentName ? ` — ${tournamentName}` : ""}</div>
       <div className="rules-row"><span>✅ Acertar ganador o empate (90 min)</span><span className="rules-pts">{s.winner} pts</span></div>
       <div className="rules-row"><span>🎯 Bonus: marcador exacto</span><span className="rules-pts">+{s.exact} pts</span></div>
-      <div className="rules-row"><span>⚽ Bonus: penales exactos</span><span className="rules-pts">+{s.penalty} pts</span></div>
-      <div className="rules-row"><span>🔄 Ganador acertado pero fue a penales</span><span className="rules-pts">{s.wrongPenalty} pt</span></div>
+      <div className="rules-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 6, marginTop: 4 }}>
+        <span style={{ fontSize: 11, color: "var(--text3)" }}>En eliminatorias (empate → penales):</span>
+      </div>
+      <div className="rules-row"><span>🔄 Predijo empate + acertó ganador en penales</span><span className="rules-pts">+{s.wrongPenalty} pt</span></div>
+      <div className="rules-row"><span>🎯 Bonus: marcador exacto de penales</span><span className="rules-pts">+{s.penalty} pts</span></div>
+      <div className="rules-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 6, marginTop: 4 }}>
+        <span>⚽ Solo acertó ganador (fue a penales)</span><span className="rules-pts">{s.wrongPenalty} pt</span>
+      </div>
       <div className="rules-row"><span>🏆 Polla del campeón</span><span className="rules-pts">+{s.champion} pts</span></div>
       <div style={{ marginTop: 8, fontSize: 11, color: "var(--text3)" }}>
         Máx partido normal: <strong>{s.winner + s.exact} pts</strong> · Con penales: <strong>{s.winner + s.exact + s.penalty} pts</strong>
       </div>
+      <button onClick={() => setShowExamples(e => !e)}
+        style={{ marginTop: 10, width: "100%", background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.2)", borderRadius: 8, padding: "7px 0", fontSize: 12, fontWeight: 700, color: "var(--gold)", cursor: "pointer" }}>
+        {showExamples ? "▲ Ocultar ejemplos" : "📖 Ver ejemplos con penales"}
+      </button>
+      {showExamples && (
+        <div style={{ marginTop: 10 }}>
+          <div style={{ fontSize: 11, color: "var(--text2)", marginBottom: 6, fontWeight: 700 }}>Ejemplo: partido termina 1-1 · local gana penales 5-3</div>
+          {examples.map(ex => (
+            <div key={ex.id} style={{ marginBottom: 8, background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 10px", borderBottom: "1px solid var(--border)", fontSize: 11 }}>
+                <span style={{ fontWeight: 700, color: "var(--text2)" }}>{ex.id}. {ex.pred}</span>
+                <span style={{ fontWeight: 700, color: ex.pts >= 5 ? "var(--green)" : ex.pts > 0 ? "var(--gold)" : "var(--text3)" }}>{ex.pts} pts</span>
+              </div>
+              {ex.rows.map((r, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "3px 10px", fontSize: 11 }}>
+                  <span style={{ color: r.ok ? "var(--green)" : "var(--text3)" }}>{r.ok ? "✅" : "❌"} {r.desc}</span>
+                  <span style={{ color: r.pts > 0 ? "var(--green)" : "var(--text3)" }}>{r.pts > 0 ? `+${r.pts}` : "—"}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 // ── STATS MODAL ────────────────────────────────────────────────────────────────
-function StatsModal({ participant, stats, onClose, matches, predictions, scoring }) {
-  const matchHistory = Object.values(matches || {})
+function StatsModal({ participant, stats, onClose, matches, predictions, scoring, initialTab }) {
+  const [tab, setTab] = useState(initialTab || "total");
+
+  const isKnockoutPhase = (phase) => ["r32", "r16", "qf", "sf", "final"].includes(phase);
+
+  const allFinished = Object.values(matches || {})
     .filter(m => m.status === "finished")
-    .sort((a, b) => new Date(b.datetime) - new Date(a.datetime))
-    .slice(0, 10);
+    .sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
+
+  const matchHistory = tab === "groups"
+    ? allFinished.filter(m => m.phase === "groups" || m.phase === "test")
+    : tab === "elim"
+    ? allFinished.filter(m => isKnockoutPhase(m.phase))
+    : allFinished.slice(0, 10);
+
+  const pts = tab === "groups" ? stats.groupsPts : tab === "elim" ? stats.knockoutPoints : stats.total;
+  const ptsLabel = tab === "groups" ? "PTS GRUPOS" : tab === "elim" ? "PTS ELIM." : "PUNTOS";
+
+  // Calcular exactos, aciertos y racha filtrados por fase
+  const phaseExact = matchHistory.filter(m => {
+    const pred = predictions?.[m.id]?.[participant.id];
+    if (!pred) return false;
+    return parseInt(pred.home) === parseInt(m.result.home) && parseInt(pred.away) === parseInt(m.result.away);
+  }).length;
+
+  const phaseWins = matchHistory.filter(m => {
+    const pred = predictions?.[m.id]?.[participant.id];
+    if (!pred) return false;
+    const rHome = parseInt(m.result.home), rAway = parseInt(m.result.away);
+    const pHome = parseInt(pred.home), pAway = parseInt(pred.away);
+    const realWinner = rHome > rAway ? "home" : rAway > rHome ? "away" : "draw";
+    const predWinner = pHome > pAway ? "home" : pAway > pHome ? "away" : "draw";
+    return predWinner === realWinner;
+  }).length;
+
+  const phasePct = matchHistory.length > 0 ? Math.round((phaseWins / matchHistory.length) * 100) : 0;
+
+  const phaseStreak = matchHistory.length === 0 ? 0 : (() => {
+    let max = 0, cur = 0;
+    [...matchHistory].reverse().forEach(m => {
+      const pred = predictions?.[m.id]?.[participant.id];
+      if (!pred) { cur = 0; return; }
+      const rHome = parseInt(m.result.home), rAway = parseInt(m.result.away);
+      const pHome = parseInt(pred.home), pAway = parseInt(pred.away);
+      const realWinner = rHome > rAway ? "home" : rAway > rHome ? "away" : "draw";
+      const predWinner = pHome > pAway ? "home" : pAway > pHome ? "away" : "draw";
+      if (predWinner === realWinner) { cur++; max = Math.max(max, cur); } else cur = 0;
+    });
+    return max;
+  })();
+
+  const displayStreak = tab === "total" ? stats.streak : phaseStreak;
+  const displayExact = tab === "total" ? stats.exact : phaseExact;
+  const displayPct = tab === "total" ? stats.pct : phasePct;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -569,16 +665,34 @@ function StatsModal({ participant, stats, onClose, matches, predictions, scoring
           </div>
           <button className="btn btn-secondary btn-sm" style={{ marginLeft: "auto" }} onClick={onClose}>✕</button>
         </div>
-        <div className="stat-grid">
-          <div className="stat-box"><div className="stat-val">{stats.total}</div><div className="stat-lbl">PUNTOS</div></div>
-          <div className="stat-box"><div className="stat-val">{stats.exact}</div><div className="stat-lbl">EXACTOS</div></div>
-          <div className="stat-box"><div className="stat-val">{stats.pct}%</div><div className="stat-lbl">ACIERTOS</div></div>
-          <div className="stat-box"><div className="stat-val">{stats.streak}</div><div className="stat-lbl">MEJOR RACHA</div></div>
-          <div className="stat-box"><div className="stat-val">{stats.groupsPts}</div><div className="stat-lbl">PTS GRUPOS</div></div>
-          <div className="stat-box"><div className="stat-val">{stats.elimPts}</div><div className="stat-lbl">PTS ELIM.</div></div>
+
+        <div className="tabs" style={{ marginBottom: 12 }}>
+          <button className={`tab ${tab === "total" ? "active" : ""}`} onClick={() => setTab("total")}>Total</button>
+          <button className={`tab ${tab === "groups" ? "active" : ""}`} onClick={() => setTab("groups")}>Grupos</button>
+          <button className={`tab ${tab === "elim" ? "active" : ""}`} onClick={() => setTab("elim")}>Eliminatorias</button>
         </div>
-        {stats.champPts > 0 && <div className="info-box">🏆 +{stats.champPts} puntos por acertar el campeón</div>}
-        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)", marginBottom: 8 }}>ÚLTIMOS PARTIDOS</div>
+
+        <div className="stat-grid">
+          <div className="stat-box"><div className="stat-val">{pts}</div><div className="stat-lbl">{ptsLabel}</div></div>
+          <div className="stat-box"><div className="stat-val">{displayExact}</div><div className="stat-lbl">EXACTOS</div></div>
+          <div className="stat-box"><div className="stat-val">{displayPct}%</div><div className="stat-lbl">ACIERTOS</div></div>
+          <div className="stat-box"><div className="stat-val">{displayStreak}</div><div className="stat-lbl">MEJOR RACHA</div></div>
+          {tab === "total" && <div className="stat-box"><div className="stat-val">{stats.groupsPts}</div><div className="stat-lbl">PTS GRUPOS</div></div>}
+          {tab === "total" && <div className="stat-box"><div className="stat-val">{stats.elimPts}</div><div className="stat-lbl">PTS ELIM.</div></div>}
+        </div>
+
+        {tab !== "elim" && stats.champPts > 0 && <div className="info-box">🏆 +{stats.champPts} puntos por acertar el campeón</div>}
+
+        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text2)", marginBottom: 8 }}>
+          {tab === "groups" ? "PARTIDOS DE GRUPOS" : tab === "elim" ? "PARTIDOS ELIMINATORIAS" : "ÚLTIMOS PARTIDOS"}
+        </div>
+
+        {matchHistory.length === 0 && (
+          <div style={{ fontSize: 13, color: "var(--text3)", textAlign: "center", padding: "16px 0" }}>
+            No hay partidos terminados en esta fase
+          </div>
+        )}
+
         {matchHistory.map(m => {
           const pred = predictions?.[m.id]?.[participant.id];
           const pts = calcPoints(pred, m.result, scoring);
@@ -587,7 +701,7 @@ function StatsModal({ participant, stats, onClose, matches, predictions, scoring
               <div>
                 <div style={{ fontWeight: 500 }}>{m.homeTeam} vs {m.awayTeam}</div>
                 <div style={{ fontSize: 11, color: "var(--text3)" }}>
-                  Real: {m.result.home}-{m.result.away} · Mi pred: {pred ? `${pred.home}-${pred.away}` : "Sin pred."}
+                  Real: {m.result.home}-{m.result.away}{m.result.penalties ? ` (pen: ${m.result.pensHome}-${m.result.pensAway})` : ""} · Mi pred: {pred ? `${pred.home}-${pred.away}${pred.pensHome != null ? ` (pen: ${pred.pensHome}-${pred.pensAway})` : ""}` : "Sin pred."}
                 </div>
               </div>
               {pts !== null && <span className={`pts-badge ${pts >= 4 ? "good" : pts > 0 ? "ok" : "zero"}`}>{pts}p</span>}
@@ -609,6 +723,43 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
   const isKnockout = match.phase !== "groups" && match.phase !== "test";
   const predDraw = parseInt(pred.home) === parseInt(pred.away);
   const myPts = finished ? calcPoints(myPred, match.result, scoring) : null;
+  const [showBreakdown, setShowBreakdown] = useState(false);
+
+  const getBreakdown = () => {
+    if (!myPred || myPts === null) return [];
+    const s = scoring || { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1 };
+    const rows = [];
+    const rHome = parseInt(match.result.home), rAway = parseInt(match.result.away);
+    const pHome = parseInt(myPred.home), pAway = parseInt(myPred.away);
+    const realWinner = rHome > rAway ? "home" : rAway > rHome ? "away" : "draw";
+    const predWinner = pHome > pAway ? "home" : pAway > pHome ? "away" : "draw";
+    const realPensWinner = match.result.pensHome > match.result.pensAway ? "home" : "away";
+    if (predWinner === realWinner) {
+      rows.push({ ok: true, desc: predWinner === "draw" ? "Acertó empate" : "Acertó ganador", pts: s.winner });
+      if (pHome === rHome && pAway === rAway) rows.push({ ok: true, desc: "Marcador exacto", pts: s.exact });
+      else rows.push({ ok: false, desc: `Marcador incorrecto (predijo ${pHome}-${pAway})`, pts: 0 });
+      if (match.result.penalties && myPred.pensHome != null) {
+        const predPensWinner = parseInt(myPred.pensHome) > parseInt(myPred.pensAway) ? "home" : "away";
+        if (parseInt(myPred.pensHome) === parseInt(match.result.pensHome) && parseInt(myPred.pensAway) === parseInt(match.result.pensAway)) {
+          rows.push({ ok: true, desc: `Marcador exacto de penales (${myPred.pensHome}-${myPred.pensAway})`, pts: s.penalty });
+        } else if (predPensWinner === realPensWinner) {
+          rows.push({ ok: true, desc: "Acertó ganador en penales", pts: s.wrongPenalty });
+        } else {
+          rows.push({ ok: false, desc: "No acertó el ganador en penales", pts: 0 });
+        }
+      }
+    } else if (match.result.penalties) {
+      const predFinalWinner = predWinner;
+      if (predFinalWinner === realPensWinner) {
+        rows.push({ ok: true, desc: "Acertó ganador final (fue a penales)", pts: s.wrongPenalty });
+      } else {
+        rows.push({ ok: false, desc: `No acertó el resultado (predijo ${pHome}-${pAway})`, pts: 0 });
+      }
+    } else {
+      rows.push({ ok: false, desc: `No acertó el resultado (predijo ${pHome}-${pAway})`, pts: 0 });
+    }
+    return rows;
+  };
   const phaseClass = match.phase === "test" ? "phase-test" : match.phase === "groups" ? "phase-groups" : "phase-knockout";
   const { liveData, isLive } = useLiveScore(match);
 
@@ -618,7 +769,7 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
     <div className="match-card">
       <div className="match-meta">
         <span>{fmtDate(match.datetime)}{match.stadium ? ` · ${match.stadium}` : ""}</span>
-        <span className={`phase-badge ${phaseClass}`}>{match.group ? `Grupo ${match.group}` : getPhaseLabel(match.phase)}</span>
+        <span className={`phase-badge ${phaseClass}`}>{match.phase === "groups" && match.group ? `Grupo ${match.group}` : getPhaseLabel(match.phase)}</span>
       </div>
       <div className="match-teams">
         <span className="team-name">{TEAM_FLAGS[match.homeTeam] || "🏳️"} {match.homeTeam}</span>
@@ -654,12 +805,27 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
           )}
           {isKnockout && predDraw && !locked && (
             <div style={{ marginTop: 8, padding: 10, background: "rgba(255,23,68,0.05)", borderRadius: 8, border: "1px solid rgba(255,23,68,0.12)" }}>
-              <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 6 }}>⚠️ Predices empate → marcador de penales:</div>
-              <div className="score-input-row">
-                <Stepper value={pred.pensHome || 0} onChange={v => setPred(p => ({ ...p, pensHome: v }))} />
-                <span style={{ fontSize: 11, color: "var(--text3)" }}>PEN</span>
-                <Stepper value={pred.pensAway || 0} onChange={v => setPred(p => ({ ...p, pensAway: v }))} />
+              <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 6 }}>⚠️ Predices empate → ¿quieres predecir los penales?</div>
+              <div style={{ display: "flex", gap: 8, marginBottom: pred.predictPens ? 8 : 0 }}>
+                <button onClick={() => setPred(p => ({ ...p, predictPens: true, pensHome: p.pensHome ?? 0, pensAway: p.pensAway ?? 0 }))}
+                  style={{ flex: 1, padding: "6px 0", borderRadius: 8, border: "none", background: pred.predictPens ? "var(--green)" : "var(--border)", color: pred.predictPens ? "#000" : "var(--text2)", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                  ✅ Sí, predecir
+                </button>
+                <button onClick={() => setPred(p => ({ ...p, predictPens: false, pensHome: null, pensAway: null }))}
+                  style={{ flex: 1, padding: "6px 0", borderRadius: 8, border: "none", background: pred.predictPens === false ? "var(--red)" : "var(--border)", color: pred.predictPens === false ? "#fff" : "var(--text2)", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                  ❌ No predecir
+                </button>
               </div>
+              {pred.predictPens && (
+                <div className="score-input-row">
+                  <Stepper value={pred.pensHome ?? 0} onChange={v => setPred(p => ({ ...p, pensHome: v }))} />
+                  <span style={{ fontSize: 11, color: "var(--text3)" }}>PEN</span>
+                  <Stepper value={pred.pensAway ?? 0} onChange={v => setPred(p => ({ ...p, pensAway: v }))} />
+                </div>
+              )}
+              {pred.predictPens && pred.pensHome === 0 && pred.pensAway === 0 && (
+                <div className="warning-box" style={{ marginTop: 6, marginBottom: 0, fontSize: 11 }}>⚠️ El marcador de penales no puede ser 0-0</div>
+              )}
             </div>
           )}
           {!locked && (
@@ -672,14 +838,16 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
                   <button className="btn btn-secondary btn-sm" style={{ flexShrink: 0 }} onClick={() => setEditing(true)}>✏️</button>
                 </>
               ) : (
-                <button className="btn btn-primary btn-full btn-sm" onClick={() => { onSave(match.id, pred); setEditing(false); }}>
+                <button className="btn btn-primary btn-full btn-sm" 
+                  disabled={pred.predictPens && pred.pensHome === 0 && pred.pensAway === 0}
+                  onClick={() => { onSave(match.id, pred); setEditing(false); }}>
                   💾 Guardar predicción
                 </button>
               )}
             </div>
           )}
           {locked && !myPred && <div className="warning-box" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>⏰ Sin predicción — 0 puntos</div>}
-          {locked && myPred && <div className="info-box" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>🔒 Predicción guardada · {myPred.home}-{myPred.away}</div>}
+          {locked && myPred && <div className="info-box" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>🔒 Predicción guardada · {myPred.home}-{myPred.away}{myPred.pensHome != null ? ` (pen: ${myPred.pensHome}-${myPred.pensAway})` : ""}</div>}
           {isAdmin && locked && <AdminSetResult match={match} onSetResult={onSetResult} />}
         </div>
       )}
@@ -693,11 +861,28 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
               {match.result.penalties && <div style={{ fontSize: 10, color: "var(--text3)" }}>Penales: {match.result.pensHome}-{match.result.pensAway}</div>}
             </div>
             {myPts !== null && (
-              <span className={`pts-badge ${myPts >= 4 ? "good" : myPts > 0 ? "ok" : "zero"}`}>
-                {myPts >= 4 ? "🎯" : myPts > 0 ? "✅" : "❌"} {myPts} pts
+              <span className={`pts-badge ${myPts >= 4 ? "good" : myPts > 0 ? "ok" : "zero"}`}
+                style={{ cursor: "pointer" }}
+                onClick={() => setShowBreakdown(b => !b)}>
+                {myPts >= 4 ? "🎯" : myPts > 0 ? "✅" : "❌"} {myPts} pts ℹ️
               </span>
             )}
           </div>
+          {showBreakdown && myPts !== null && (
+            <div style={{ margin: "8px 0", background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+              <div style={{ padding: "6px 12px", fontSize: 11, fontWeight: 700, color: "var(--text2)", borderBottom: "1px solid var(--border)" }}>Desglose de puntos</div>
+              {getBreakdown().map((r, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 12px", borderBottom: "1px solid var(--border)", fontSize: 12 }}>
+                  <span style={{ color: r.ok ? "var(--green)" : "var(--text3)" }}>{r.ok ? "✅" : "❌"} {r.desc}</span>
+                  <span style={{ fontWeight: 700, color: r.pts > 0 ? "var(--green)" : "var(--text3)" }}>{r.pts > 0 ? `+${r.pts}` : "—"}</span>
+                </div>
+              ))}
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 12px", fontSize: 12, fontWeight: 700 }}>
+                <span style={{ color: "var(--text2)" }}>Total</span>
+                <span style={{ color: "var(--green)" }}>{myPts} pts</span>
+              </div>
+            </div>
+          )}
           <button className="btn btn-secondary btn-sm btn-full" style={{ marginTop: 10 }} onClick={() => setExpanded(e => !e)}>
             {expanded ? "▲ Ocultar" : "👁 Ver predicciones"}
           </button>
@@ -709,7 +894,7 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
                   <div key={uid} className="reveal-item">
                     <div className="reveal-name">{p.userName}</div>
                     <div className="reveal-score">
-                      <span>{p.home}-{p.away}</span>
+                      <span>{p.home}-{p.away}{p.pensHome != null ? ` (pen: ${p.pensHome}-${p.pensAway})` : ""}</span>
                       <span className={`pts-badge ${pts >= 4 ? "good" : pts > 0 ? "ok" : "zero"}`} style={{ fontSize: 10, padding: "1px 6px" }}>{pts}p</span>
                     </div>
                   </div>
@@ -788,9 +973,16 @@ function EditMatch({ match, onEdit, onCorrectResult }) {
             <div className="input-group" style={{ flex: 1 }}>
               <label className="input-label">Fase</label>
               <select className="input" value={form.phase} onChange={e => setForm(f => ({ ...f, phase: e.target.value }))}>
-                <option value="test">🧪 Prueba</option><option value="groups">Fase Grupos</option><option value="r16">Octavos</option><option value="qf">Cuartos</option><option value="sf">Semifinal</option><option value="final">Final</option>
+                <option value="test">🧪 Prueba</option><option value="groups">Fase Grupos</option><option value="r32">Dieciseisavos</option><option value="r16">Octavos</option><option value="qf">Cuartos</option><option value="sf">Semifinal</option><option value="final">Final</option>
               </select>
             </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderTop: "1px solid var(--border)", marginTop: 8 }}>
+            <span style={{ fontSize: 13, color: "var(--text2)", fontWeight: 600 }}>Visible para usuarios</span>
+            <button onClick={() => onEdit(match.id, { enabled: !match.enabled })}
+              style={{ background: match.enabled ? "var(--green)" : "var(--border)", border: "none", borderRadius: 20, padding: "6px 16px", color: match.enabled ? "#000" : "var(--text2)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              {match.enabled ? "✅ Habilitado" : "⛔ Deshabilitado"}
+            </button>
           </div>
           <button className="btn btn-primary btn-full btn-sm" onClick={() => { 
             const utcForm = { ...form, datetime: new Date(form.datetime).toISOString() };
@@ -954,7 +1146,7 @@ function ChampPrediction({ userId, champPredictions, tournamentWinner, onSave, m
           </div>
           <div style={{ display: "flex", gap: 6 }}>
             {!hasStarted && <button className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>✏️</button>}
-            {tournamentWinner && myPred.team === tournamentWinner && <span className="pts-badge good">🏆 +{champPts} pts</span>}
+            {tournamentWinner && myPred.team && myPred.team.trim().toLowerCase().replace(/\s+/g,"") === tournamentWinner.trim().toLowerCase().replace(/\s+/g,"") && <span className="pts-badge good">🏆 +{champPts} pts</span>}
           </div>
         </div>
       ) : (
@@ -1188,6 +1380,31 @@ export default function App() {
     showNotif("Torneo eliminado");
   }
 
+  function clearMatches() {
+    if (!window.confirm("¿Borrar todos los partidos y predicciones del torneo activo? Esta acción no se puede deshacer.")) return;
+    remove(dbRef(db, `${tPath("matches")}`));
+    remove(dbRef(db, `${tPath("predictions")}`));
+    remove(dbRef(db, `${tPath("pools")}`));
+    showNotif("🗑️ Partidos y predicciones eliminados");
+  }
+
+  function clearUsers() {
+    if (!window.confirm("¿Borrar todos los usuarios del torneo activo? Los usuarios podrán volver a registrarse con el código del grupo.")) return;
+    remove(dbRef(db, `${tPath("participants")}`));
+    remove(dbRef(db, `${tPath("predictions")}`));
+    remove(dbRef(db, `${tPath("champPredictions")}`));
+    remove(dbRef(db, `${tPath("pools")}`));
+    showNotif("👥 Usuarios eliminados");
+  }
+
+  function clearPredictions() {
+    if (!window.confirm("¿Borrar las predicciones de partidos pendientes? Los partidos terminados conservan sus predicciones.")) return;
+    const pendingMatchIds = Object.values(matches).filter(m => m.status !== "finished").map(m => m.id);
+    pendingMatchIds.forEach(id => remove(dbRef(db, `${tPath("predictions")}/${id}`)));
+    remove(dbRef(db, `${tPath("champPredictions")}`));
+    showNotif("🔄 Predicciones de partidos pendientes eliminadas");
+  }
+
   // ── Predictions ────────────────────────────────────────────────────────────
   function savePrediction(matchId, pred) {
     if (!currentUser?.paidGroups && !currentUser?.paidElim && currentUser?.role !== "admin") return showNotif("⚠️ Pago pendiente");
@@ -1228,7 +1445,25 @@ export default function App() {
   function deleteMatch(id) { remove(dbRef(db, `${tPath("matches")}/${id}`)); showNotif("Partido eliminado"); }
   function editMatch(id, changes) { update(dbRef(db, `${tPath("matches")}/${id}`), changes); showNotif("✅ Partido actualizado"); }
   function correctResult(matchId, res) { update(dbRef(db, `${tPath("matches")}/${matchId}`), { status: "finished", result: { ...res, status: "finished" } }); showNotif("✅ Resultado corregido"); }
-  function setResult(matchId, res) { update(dbRef(db, `${tPath("matches")}/${matchId}`), { status: "finished", result: res }); showNotif("✅ Resultado ingresado"); }
+  function setResult(matchId, res) {
+    const match = matches[matchId];
+    const fullResult = { ...res, status: "finished", phase: match?.phase || res.phase };
+    update(dbRef(db, `${tPath("matches")}/${matchId}`), { status: "finished", result: fullResult });
+    // Si es la final, asignar el ganador automáticamente como campeón
+    if (match?.phase === "final") {
+      const winner = parseInt(res.home) > parseInt(res.away)
+        ? match.homeTeam
+        : parseInt(res.away) > parseInt(res.home)
+        ? match.awayTeam
+        : parseInt(res.pensHome) > parseInt(res.pensAway)
+        ? match.homeTeam
+        : match.awayTeam;
+      update(dbRef(db, `${tPath("settings")}`), { tournamentWinner: winner });
+      showNotif(`🏆 ¡${winner} es el campeón! Polla del campeón actualizada.`);
+    } else {
+      showNotif("✅ Resultado ingresado");
+    }
+  }
 
   function toggleActive(p) { update(dbRef(db, `${tPath("participants")}/${p.id}`), { active: !p.active }); showNotif(p.active ? "⏸ Participante suspendido" : "▶️ Participante reactivado"); }
 
@@ -1282,17 +1517,24 @@ export default function App() {
   const activeTournament = tournaments[activeTournamentId];
   const scoring = settings.scoring || { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1, champion: 10 };
 
-  const standings = participants
+  const standingsBase = participants
     .filter(p => p.role !== "admin" && (p.active || p.paidGroups || p.paidElim))
-    .map(p => ({ ...p, ...computeStats(p.id, matches, predictions, champPredictions, settings.tournamentWinner, scoring) }))
-    .sort((a, b) =>
-      b.total - a.total ||           // 1. Mayor puntaje
-      b.exact - a.exact ||           // 2. Mayor exactos
-      b.wins - a.wins ||             // 3. Mayor ganadores acertados
-      a.noPred - b.noPred            // 4. Menor predicciones sin realizar
-    );
+    .map(p => ({ ...p, ...computeStats(p.id, matches, predictions, champPredictions, settings.tournamentWinner, scoring) }));
 
-  const isKnockoutPhase = (phase) => ["r16", "qf", "sf", "final"].includes(phase);
+  const sortStandings = (list, tab) => {
+    const getPts = p => tab === "groups" ? p.groupsPts : tab === "elim" ? p.knockoutPoints : p.total;
+    return [...list].sort((a, b) =>
+      getPts(b) - getPts(a) ||
+      b.exact - a.exact ||
+      b.wins - a.wins ||
+      a.noPred - b.noPred ||
+      a.name.localeCompare(b.name)
+    );
+  };
+
+  const standings = sortStandings(standingsBase, standTab);
+
+  const isKnockoutPhase = (phase) => ["r32", "r16", "qf", "sf", "final"].includes(phase);
   const upcomingMatches = Object.values(matches).filter(m => m.status !== "finished" && (m.enabled || m.phase === "test" || isKnockoutPhase(m.phase) || isAdmin)).sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
   const finishedMatches = Object.values(matches).filter(m => m.status === "finished" && (m.enabled || m.phase === "test" || isKnockoutPhase(m.phase) || isAdmin)).sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
 
@@ -1380,7 +1622,7 @@ export default function App() {
           <SelectorAvatar avatarActual={currentUser?.avatar} onSeleccionar={guardarAvatar} onCerrar={() => setShowAvatarSelector(false)} />
         )}
         {selectedParticipant && (
-          <StatsModal participant={selectedParticipant} stats={computeStats(selectedParticipant.id, matches, predictions, champPredictions, settings.tournamentWinner, scoring)} matches={matches} predictions={predictions} scoring={scoring} onClose={() => setSelectedParticipant(null)} />
+          <StatsModal key={`${selectedParticipant.id}-${standTab}`} participant={selectedParticipant} stats={computeStats(selectedParticipant.id, matches, predictions, champPredictions, settings.tournamentWinner, scoring)} matches={matches} predictions={predictions} scoring={scoring} onClose={() => setSelectedParticipant(null)} initialTab={standTab} />
         )}
 
         <div className="app">
@@ -1470,14 +1712,52 @@ export default function App() {
                 <div className="pool-grid">
                   {activeTournament?.type === "worldcup" ? (
                     <>
-                      <div className="pool-card"><div className="pool-label">💰 POZO GRUPOS</div><div className="pool-amount">{"$" + pools.groups.toLocaleString()}</div><div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency} · {settings.prizeFirst || 70}/{settings.prizeSecond || 30}</div></div>
-                      <div className="pool-card"><div className="pool-label">🏆 POZO ELIM.</div><div className="pool-amount">{"$" + pools.eliminations.toLocaleString()}</div><div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency} · {settings.prizeFirst || 70}/{settings.prizeSecond || 30}</div></div>
+                      <div className="pool-card">
+                        <div className="pool-label">💰 POZO GRUPOS</div>
+                        <div className="pool-amount">{"$" + pools.groups.toLocaleString()}</div>
+                        <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency}</div>
+                        <div style={{ marginTop: 6, borderTop: "1px solid var(--border)", paddingTop: 6 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 3 }}>
+                            <span style={{ color: "var(--gold)" }}>🥇 1er lugar ({settings.prizeFirst || 70}%)</span>
+                            <span style={{ fontWeight: 700, color: "var(--gold)" }}>${Math.round(pools.groups * (settings.prizeFirst || 70) / 100).toLocaleString()}</span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                            <span style={{ color: "var(--text2)" }}>🥈 2do lugar ({settings.prizeSecond || 30}%)</span>
+                            <span style={{ fontWeight: 700, color: "var(--text2)" }}>${Math.round(pools.groups * (settings.prizeSecond || 30) / 100).toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="pool-card">
+                        <div className="pool-label">🏆 POZO ELIM.</div>
+                        <div className="pool-amount">{"$" + pools.eliminations.toLocaleString()}</div>
+                        <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency}</div>
+                        <div style={{ marginTop: 6, borderTop: "1px solid var(--border)", paddingTop: 6 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 3 }}>
+                            <span style={{ color: "var(--gold)" }}>🥇 1er lugar ({settings.prizeFirst || 70}%)</span>
+                            <span style={{ fontWeight: 700, color: "var(--gold)" }}>${Math.round(pools.eliminations * (settings.prizeFirst || 70) / 100).toLocaleString()}</span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                            <span style={{ color: "var(--text2)" }}>🥈 2do lugar ({settings.prizeSecond || 30}%)</span>
+                            <span style={{ fontWeight: 700, color: "var(--text2)" }}>${Math.round(pools.eliminations * (settings.prizeSecond || 30) / 100).toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </div>
                     </>
                   ) : (
                     <div className="pool-card" style={{ gridColumn: "1 / -1" }}>
                       <div className="pool-label">💰 POZO {activeTournament?.name?.toUpperCase()}</div>
                       <div className="pool-amount">{"$" + (pools.groups + pools.eliminations).toLocaleString()}</div>
-                      <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency} · {settings.prizeFirst || 70}/{settings.prizeSecond ?? (100 - (settings.prizeFirst || 70))}</div>
+                      <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 3 }}>{settings.currency}</div>
+                      <div style={{ marginTop: 6, borderTop: "1px solid var(--border)", paddingTop: 6 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 3 }}>
+                          <span style={{ color: "var(--gold)" }}>🥇 1er lugar ({settings.prizeFirst || 70}%)</span>
+                          <span style={{ fontWeight: 700, color: "var(--gold)" }}>${Math.round((pools.groups + pools.eliminations) * (settings.prizeFirst || 70) / 100).toLocaleString()}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                          <span style={{ color: "var(--text2)" }}>🥈 2do lugar ({settings.prizeSecond || 30}%)</span>
+                          <span style={{ fontWeight: 700, color: "var(--text2)" }}>${Math.round((pools.groups + pools.eliminations) * (settings.prizeSecond || 30) / 100).toLocaleString()}</span>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1488,8 +1768,9 @@ export default function App() {
                 </div>
                 {standings.length === 0
                   ? <div className="empty"><div className="empty-icon">👥</div><div className="empty-text">Sin participantes activos aún</div></div>
-                  : standings.map((p, i) => {
-                    const pts = standTab === "groups" ? p.groupsPts : standTab === "elim" ? p.elimPts : p.total;
+                  : <>
+                  {standings.map((p, i) => {
+                    const pts = standTab === "groups" ? p.groupsPts : standTab === "elim" ? p.knockoutPoints : p.total;
                     return (
                       <div key={p.id} className={`standings-row ${i === 0 ? "top1" : i === 1 ? "top2" : ""}`} onClick={() => setSelectedParticipant(p)}>
                         <span className={`rank ${i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : ""}`}>{i + 1}</span>
@@ -1507,6 +1788,7 @@ export default function App() {
                       </div>
                     );
                   })}
+                  </>}
                 <div style={{ height: 1, background: "var(--border)", margin: "14px 0" }} />
                 <RulesBox scoring={scoring} tournamentName={activeTournament?.name} />
               </div>
@@ -1651,6 +1933,13 @@ export default function App() {
                             <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => { setActiveTournamentId(t.id); setAdminTab("matches"); }}>⚽ Ver partidos</button>
                             {<button className="btn btn-danger btn-sm" onClick={() => deleteTournament(t.id)}>🗑</button>}
                           </div>
+                          {t.isActive && (
+                            <div style={{ marginTop: 8, display: "flex", gap: 6 }}>
+                              <button className="btn btn-danger btn-sm" style={{ flex: 1, fontSize: 11 }} onClick={clearMatches}>🗑️ Borrar partidos</button>
+                              <button className="btn btn-danger btn-sm" style={{ flex: 1, fontSize: 11 }} onClick={clearUsers}>👥 Borrar usuarios</button>
+                              <button className="btn btn-danger btn-sm" style={{ flex: 1, fontSize: 11 }} onClick={clearPredictions}>🔄 Borrar predicciones</button>
+                            </div>
+                          )}
                         </div>
                       ))
                     }
@@ -1671,7 +1960,7 @@ export default function App() {
                         <div className="input-group" style={{ flex: 1 }}>
                           <label className="input-label">Fase</label>
                           <select className="input" value={newMatch.phase} onChange={e => setNewMatch(m => ({ ...m, phase: e.target.value }))}>
-                            <option value="test">🧪 Prueba</option><option value="groups">Fase Grupos</option><option value="r16">Octavos</option><option value="qf">Cuartos</option><option value="sf">Semifinal</option><option value="final">Final</option>
+                            <option value="test">🧪 Prueba</option><option value="groups">Fase Grupos</option><option value="r32">Dieciseisavos</option><option value="r16">Octavos</option><option value="qf">Cuartos</option><option value="sf">Semifinal</option><option value="final">Final</option>
                           </select>
                         </div>
                       </div>
@@ -1736,9 +2025,9 @@ export default function App() {
                         : Object.entries(champPredictions).map(([uid, cp]) => (
                           <div key={uid} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--border)", fontSize: 13 }}>
                             <span>{cp.userName}</span>
-                            <span style={{ color: settings.tournamentWinner && cp.team === settings.tournamentWinner ? "var(--gold)" : "var(--text2)" }}>
+                            <span style={{ color: settings.tournamentWinner && cp.team && cp.team.trim().toLowerCase().replace(/\s+/g,"") === settings.tournamentWinner.trim().toLowerCase().replace(/\s+/g,"") ? "var(--gold)" : "var(--text)" }}>
                               {settings.tournamentWinner ? cp.team : "🔒 Oculta"}
-                              {settings.tournamentWinner && cp.team === settings.tournamentWinner && " 🏆"}
+                              {settings.tournamentWinner && cp.team && cp.team.trim().toLowerCase().replace(/\s+/g,"") === settings.tournamentWinner.trim().toLowerCase().replace(/\s+/g,"") && " 🏆"}
                             </span>
                           </div>
                         ))}
