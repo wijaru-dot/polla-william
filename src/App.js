@@ -1178,6 +1178,7 @@ export default function App() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showAvatarSelector, setShowAvatarSelector] = useState(false);
   const [newMatch, setNewMatch] = useState({ homeTeam: "", awayTeam: "", datetime: "", phase: "test" });
+  const [adminPlayerForm, setAdminPlayerForm] = useState({ show: false, name: "", avatar: null });
 
   // Tournament state
   const [tournaments, setTournaments] = useState({});
@@ -1472,6 +1473,34 @@ export default function App() {
   }
 
   function deleteMatch(id) { remove(dbRef(db, `${tPath("matches")}/${id}`)); showNotif("Partido eliminado"); }
+
+  function registerAdminAsPlayer() {
+    if (!adminPlayerForm.name.trim()) return showNotif("Ingresa tu nombre");
+    const uid = currentUser.id;
+    const existing = participants.find(p => p.id === uid);
+    if (existing) return showNotif("Ya tienes un perfil de jugador en este torneo");
+    const profile = {
+      id: uid,
+      name: adminPlayerForm.name.trim(),
+      avatar: adminPlayerForm.avatar || null,
+      role: "admin",
+      active: true,
+      paidGroups: true,
+      paidElim: true,
+      email: currentUser.email || "",
+    };
+    fbSet(dbRef(db, `${tPath("participants")}/${uid}`), profile);
+    setAdminPlayerForm({ show: false, name: "", avatar: null });
+    showNotif("\u2705 Perfil de jugador creado");
+  }
+
+  function removeAdminAsPlayer() {
+    if (!window.confirm("\u00bfEliminar tu perfil de jugador? Tus predicciones se borrar\u00e1n.")) return;
+    const uid = currentUser.id;
+    remove(dbRef(db, `${tPath("participants")}/${uid}`));
+    remove(dbRef(db, `${tPath("predictions")}/${uid}`));
+    showNotif("Perfil de jugador eliminado");
+  }
   function editMatch(id, changes) { update(dbRef(db, `${tPath("matches")}/${id}`), changes); showNotif("✅ Partido actualizado"); }
   function correctResult(matchId, res) { update(dbRef(db, `${tPath("matches")}/${matchId}`), { status: "finished", result: { ...res, status: "finished" } }); showNotif("✅ Resultado corregido"); }
   function setResult(matchId, res) {
@@ -1555,7 +1584,7 @@ export default function App() {
   const scoring = settings.scoring || { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1, champion: 10 };
 
   const standingsBase = participants
-    .filter(p => p.role !== "admin" && (p.active || p.paidGroups || p.paidElim))
+    .filter(p => (p.role !== "admin" || p.id === currentUser?.id) && (p.active || p.paidGroups || p.paidElim))
     .map(p => ({ ...p, ...computeStats(p.id, matches, predictions, champPredictions, settings.tournamentWinner, scoring) }));
 
   const sortStandings = (list, tab) => {
@@ -1929,6 +1958,41 @@ export default function App() {
                 {/* TOURNAMENTS TAB */}
                 {adminTab === "tournaments" && (
                   <div>
+                    {/* ADMIN PLAYER TOGGLE */}
+                    <div className="card" style={{ marginBottom: 12 }}>
+                      <div className="card-title">\ud83c\udfae Participar como jugador</div>
+                      {(() => {
+                        const adminProfile = participants.find(p => p.id === currentUser?.id);
+                        if (adminProfile) return (
+                          <div>
+                            <div style={{ fontSize: 13, color: "var(--text2)", marginBottom: 8 }}>
+                              Participando como <strong>{adminProfile.name}</strong> {adminProfile.avatar ? \u2764\ufe0f : ""}
+                            </div>
+                            <button className="btn btn-danger btn-sm" onClick={removeAdminAsPlayer}>\ud83d\uddd1 Dejar de participar</button>
+                          </div>
+                        );
+                        if (adminPlayerForm.show) return (
+                          <div>
+                            <div className="input-group" style={{ marginBottom: 8 }}>
+                              <label className="input-label">Tu nombre en el escalaf\u00f3n</label>
+                              <input className="input" placeholder="Ej: William" value={adminPlayerForm.name} onChange={e => setAdminPlayerForm(f => ({ ...f, name: e.target.value }))} />
+                            </div>
+                            <div className="input-group" style={{ marginBottom: 8 }}>
+                              <label className="input-label">Avatar (opcional)</label>
+                              <select className="input" value={adminPlayerForm.avatar || ""} onChange={e => setAdminPlayerForm(f => ({ ...f, avatar: e.target.value || null }))}>
+                                <option value="">Sin avatar</option>
+                                {AVATARES.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+                              </select>
+                            </div>
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button className="btn btn-gold btn-sm" onClick={registerAdminAsPlayer}>\u2705 Confirmar</button>
+                              <button className="btn btn-secondary btn-sm" onClick={() => setAdminPlayerForm({ show: false, name: "", avatar: null })}>Cancelar</button>
+                            </div>
+                          </div>
+                        );
+                        return <button className="btn btn-secondary btn-full" onClick={() => setAdminPlayerForm(f => ({ ...f, show: true }))}>+ Crear perfil de jugador</button>;
+                      })()}
+                    </div>
                     <div className="card">
                       <div className="card-title">➕ Nuevo torneo</div>
                       <div className="input-group">
