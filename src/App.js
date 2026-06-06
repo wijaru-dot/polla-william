@@ -1425,14 +1425,16 @@ export default function App() {
   function savePrediction(matchId, pred) {
     if (!currentUser?.paidGroups && !currentUser?.paidElim && currentUser?.role !== "admin") return showNotif("⚠️ Pago pendiente");
     if (!activeTournamentId) return;
-    fbSet(dbRef(db, `tournaments/${activeTournamentId}/predictions/${matchId}/${currentUser.id}`), { ...pred, userName: currentUser.name });
+    const playerName = participants.find(p => p.id === currentUser.id)?.name || currentUser.name;
+    fbSet(dbRef(db, `tournaments/${activeTournamentId}/predictions/${matchId}/${currentUser.id}`), { ...pred, userName: playerName });
     showNotif("✅ Predicción guardada");
   }
 
   function saveChampPred(team) {
     if (!currentUser?.paidGroups && !currentUser?.paidElim && currentUser?.role !== "admin") return showNotif("⚠️ Pago pendiente");
     if (!activeTournamentId) return;
-    fbSet(dbRef(db, `tournaments/${activeTournamentId}/champPredictions/${currentUser.id}`), { team, userName: currentUser.name });
+    const playerNameChamp = participants.find(p => p.id === currentUser.id)?.name || currentUser.name;
+    fbSet(dbRef(db, `tournaments/${activeTournamentId}/champPredictions/${currentUser.id}`), { team, userName: playerNameChamp });
     showNotif("🏆 Predicción de campeón guardada");
   }
 
