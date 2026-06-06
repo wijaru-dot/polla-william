@@ -714,7 +714,7 @@ function StatsModal({ participant, stats, onClose, matches, predictions, scoring
 }
 
 // ── MATCH CARD ─────────────────────────────────────────────────────────────────
-function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, participants, scoring }) {
+function MatchCard({ match, myPred, onSave, isAdmin, isAdminPlayer, onSetResult, allPreds, participants, scoring }) {
   const [pred, setPred] = useState(myPred || { home: 0, away: 0 });
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(!myPred);
@@ -828,7 +828,12 @@ function MatchCard({ match, myPred, onSave, isAdmin, onSetResult, allPreds, part
               )}
             </div>
           )}
-          {!locked && (
+          {!locked && isAdmin && !isAdminPlayer && (
+            <div style={{ marginTop: 8, padding: "8px 12px", background: "rgba(255,193,7,0.08)", borderRadius: 8, border: "1px solid rgba(255,193,7,0.2)", fontSize: 12, color: "var(--text2)", textAlign: "center" }}>
+              🔒 Activa tu perfil de jugador en el panel admin para predecir
+            </div>
+          )}
+          {!locked && (!isAdmin || isAdminPlayer) && (
             <div style={{ marginTop: 10, display: "flex", gap: 6 }}>
               {myPred && !editing ? (
                 <>
@@ -1580,6 +1585,7 @@ export default function App() {
 
   // ── Standings with tiebreaker ──────────────────────────────────────────────
   const isAdmin = currentUser?.role === "admin";
+  const isAdminPlayer = isAdmin && participants.some(p => p.id === currentUser?.id);
   const activeTournament = tournaments[activeTournamentId];
   const scoring = settings.scoring || { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1, champion: 10 };
 
@@ -1742,12 +1748,12 @@ export default function App() {
                 {predTab === "upcoming" && (
                   upcomingMatches.length === 0
                     ? <div className="empty"><div className="empty-icon">⚽</div><div className="empty-text">No hay partidos próximos</div></div>
-                    : upcomingMatches.map(m => <MatchCard key={m.id} match={m} myPred={predictions[m.id]?.[currentUser?.id]} allPreds={predictions[m.id] || {}} onSave={savePrediction} isAdmin={isAdmin} onSetResult={setResult} participants={participants} scoring={scoring} />)
+                    : upcomingMatches.map(m => <MatchCard key={m.id} match={m} myPred={predictions[m.id]?.[currentUser?.id]} allPreds={predictions[m.id] || {}} onSave={savePrediction} isAdmin={isAdmin} isAdminPlayer={isAdminPlayer} onSetResult={setResult} participants={participants} scoring={scoring} />)
                 )}
                 {predTab === "finished" && (
                   finishedMatches.length === 0
                     ? <div className="empty"><div className="empty-icon">🍃</div><div className="empty-text">Ningún partido finalizado aún</div></div>
-                    : finishedMatches.map(m => <MatchCard key={m.id} match={m} myPred={predictions[m.id]?.[currentUser?.id]} allPreds={predictions[m.id] || {}} onSave={savePrediction} isAdmin={isAdmin} onSetResult={setResult} participants={participants} scoring={scoring} />)
+                    : finishedMatches.map(m => <MatchCard key={m.id} match={m} myPred={predictions[m.id]?.[currentUser?.id]} allPreds={predictions[m.id] || {}} onSave={savePrediction} isAdmin={isAdmin} isAdminPlayer={isAdminPlayer} onSetResult={setResult} participants={participants} scoring={scoring} />)
                 )}
               </div>
             )}
