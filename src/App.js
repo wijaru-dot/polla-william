@@ -1491,11 +1491,11 @@ export default function App() {
     };
     fbSet(dbRef(db, `${tPath("participants")}/${uid}`), profile);
     setAdminPlayerForm({ show: false, name: "", avatar: null });
-    showNotif("\u2705 Perfil de jugador creado");
+    showNotif("✅ Perfil de jugador creado");
   }
 
   function removeAdminAsPlayer() {
-    if (!window.confirm("\u00bfEliminar tu perfil de jugador? Tus predicciones se borrar\u00e1n.")) return;
+    if (!window.confirm("¿Eliminar tu perfil de jugador? Tus predicciones se borrarán.")) return;
     const uid = currentUser.id;
     remove(dbRef(db, `${tPath("participants")}/${uid}`));
     remove(dbRef(db, `${tPath("predictions")}/${uid}`));
@@ -1966,15 +1966,15 @@ export default function App() {
                         if (adminProfile) return (
                           <div>
                             <div style={{ fontSize: 13, color: "var(--text2)", marginBottom: 8 }}>
-                              Participando como <strong>{adminProfile.name}</strong> {adminProfile.avatar ? \u2764\ufe0f : ""}
+                              Participando como <strong>{adminProfile.name}</strong> {adminProfile.avatar ? "❤️" : ""}
                             </div>
-                            <button className="btn btn-danger btn-sm" onClick={removeAdminAsPlayer}>\ud83d\uddd1 Dejar de participar</button>
+                            <button className="btn btn-danger btn-sm" onClick={removeAdminAsPlayer}>🗑 Dejar de participar</button>
                           </div>
                         );
                         if (adminPlayerForm.show) return (
                           <div>
                             <div className="input-group" style={{ marginBottom: 8 }}>
-                              <label className="input-label">Tu nombre en el escalaf\u00f3n</label>
+                              <label className="input-label">Tu nombre en el escalafón</label>
                               <input className="input" placeholder="Ej: William" value={adminPlayerForm.name} onChange={e => setAdminPlayerForm(f => ({ ...f, name: e.target.value }))} />
                             </div>
                             <div className="input-group" style={{ marginBottom: 8 }}>
@@ -1985,7 +1985,7 @@ export default function App() {
                               </select>
                             </div>
                             <div style={{ display: "flex", gap: 8 }}>
-                              <button className="btn btn-gold btn-sm" onClick={registerAdminAsPlayer}>\u2705 Confirmar</button>
+                              <button className="btn btn-gold btn-sm" onClick={registerAdminAsPlayer}>✅ Confirmar</button>
                               <button className="btn btn-secondary btn-sm" onClick={() => setAdminPlayerForm({ show: false, name: "", avatar: null })}>Cancelar</button>
                             </div>
                           </div>
