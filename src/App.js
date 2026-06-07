@@ -1094,7 +1094,9 @@ function GroupCard({ groupLetter, matches }) {
 }
 
 // ── PROFILE MENU ───────────────────────────────────────────────────────────────
-function ProfileMenu({ user, onLogout, onClose, onChangeAvatar }) {
+function ProfileMenu({ user, onLogout, onClose, onChangeAvatar, onChangeName }) {
+  const [editingName, setEditingName] = React.useState(false);
+  const [newName, setNewName] = React.useState(user.name || "");
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 300 }} onClick={onClose}>
       <div style={{ position: "absolute", top: 64, right: 12, background: "var(--card)", border: "1px solid var(--border)", borderRadius: 14, padding: 16, minWidth: 200, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }} onClick={e => e.stopPropagation()}>
@@ -1107,6 +1109,26 @@ function ProfileMenu({ user, onLogout, onClose, onChangeAvatar }) {
           {user.role !== "admin" && (
               <button onClick={() => { onChangeAvatar(); onClose(); }} style={{ background:"none", border:"none", color:"var(--gold)", fontSize:11, cursor:"pointer", padding:0, marginTop:2 }}>✏️ Cambiar avatar</button>
             )}
+          <div style={{ flex: 1 }}>
+            {editingName ? (
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <input
+                  autoFocus
+                  style={{ flex: 1, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 8, padding: "4px 8px", color: "var(--text)", fontSize: 13, fontFamily: "Outfit, sans-serif" }}
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  maxLength={30}
+                />
+                <button onClick={() => { if (newName.trim()) { onChangeName(newName.trim()); setEditingName(false); } }} style={{ background: "var(--green)", border: "none", borderRadius: 8, padding: "4px 8px", color: "#000", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>✅</button>
+                <button onClick={() => { setEditingName(false); setNewName(user.name || ""); }} style={{ background: "var(--border)", border: "none", borderRadius: 8, padding: "4px 8px", color: "var(--text)", fontSize: 12, cursor: "pointer" }}>✖️</button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text)" }}>{user.name}</span>
+                <button onClick={() => setEditingName(true)} style={{ background: "none", border: "none", color: "var(--text3)", fontSize: 11, cursor: "pointer", padding: 0 }}>✏️</button>
+              </div>
+            )}
+          </div>
         </div>
         {user.role !== "admin" && (
           <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid var(--border)" }}>
@@ -1422,6 +1444,12 @@ export default function App() {
   }
 
   // ── Predictions ────────────────────────────────────────────────────────────
+  function updateParticipantName(newName) {
+    if (!newName.trim() || !currentUser?.id) return;
+    update(dbRef(db, `${tPath("participants")}/${currentUser.id}`), { name: newName.trim() });
+    showNotif("✅ Nombre actualizado");
+  }
+
   function savePrediction(matchId, pred) {
     if (!currentUser?.paidGroups && !currentUser?.paidElim && currentUser?.role !== "admin") return showNotif("⚠️ Pago pendiente");
     if (!activeTournamentId) return;
@@ -1691,7 +1719,7 @@ export default function App() {
       <style>{css}</style>
       <div className={darkMode ? "" : "light"}>
         {notif && <div className="notif">{notif.msg}</div>}
-        {showProfileMenu && <ProfileMenu user={currentUser} onLogout={handleLogout} onClose={() => setShowProfileMenu(false)} onChangeAvatar={() => { setShowAvatarSelector(true); setShowProfileMenu(false); }} />}
+        {showProfileMenu && <ProfileMenu user={currentUser} onLogout={handleLogout} onClose={() => setShowProfileMenu(false)} onChangeAvatar={() => { setShowAvatarSelector(true); setShowProfileMenu(false); }} onChangeName={updateParticipantName} />}
         {showAvatarSelector && currentUser?.role !== "admin" && (
           <SelectorAvatar avatarActual={currentUser?.avatar} onSeleccionar={guardarAvatar} onCerrar={() => setShowAvatarSelector(false)} />
         )}
