@@ -1095,8 +1095,8 @@ function GroupCard({ groupLetter, matches }) {
 
 // ── PROFILE MENU ───────────────────────────────────────────────────────────────
 function ProfileMenu({ user, onLogout, onClose, onChangeAvatar, onChangeName }) {
-  const [editingName, setEditingName] = React.useState(false);
-  const [newName, setNewName] = React.useState(user.name || "");
+  const [editingName, setEditingName] = useState(false);
+  const [newName, setNewName] = useState(user.name || "");
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 300 }} onClick={onClose}>
       <div style={{ position: "absolute", top: 64, right: 12, background: "var(--card)", border: "1px solid var(--border)", borderRadius: 14, padding: 16, minWidth: 200, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }} onClick={e => e.stopPropagation()}>
