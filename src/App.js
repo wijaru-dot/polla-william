@@ -1446,7 +1446,19 @@ export default function App() {
   // ── Predictions ────────────────────────────────────────────────────────────
   function updateParticipantName(newName) {
     if (!newName.trim() || !currentUser?.id) return;
-    update(dbRef(db, `${tPath("participants")}/${currentUser.id}`), { name: newName.trim() });
+    const trimmed = newName.trim();
+    // Update participant profile
+    update(dbRef(db, `${tPath("participants")}/${currentUser.id}`), { name: trimmed });
+    // Update userName in all existing predictions
+    Object.keys(predictions).forEach(matchId => {
+      if (predictions[matchId]?.[currentUser.id]) {
+        update(dbRef(db, `${tPath("predictions")}/${matchId}/${currentUser.id}`), { userName: trimmed });
+      }
+    });
+    // Update userName in champ prediction if exists
+    if (champPredictions?.[currentUser.id]) {
+      update(dbRef(db, `${tPath("champPredictions")}/${currentUser.id}`), { userName: trimmed });
+    }
     showNotif("✅ Nombre actualizado");
   }
 
