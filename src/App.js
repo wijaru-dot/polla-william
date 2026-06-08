@@ -1632,7 +1632,7 @@ export default function App() {
   const scoring = settings.scoring || { winner: 2, exact: 3, penalty: 3, wrongPenalty: 1, champion: 10 };
 
   const standingsBase = participants
-    .filter(p => (p.role !== "admin" || p.id === currentUser?.id) && (p.active || p.paidGroups || p.paidElim))
+    .filter(p => (p.role !== "admin" || p.active) && (p.active || p.paidGroups || p.paidElim))
     .map(p => ({ ...p, ...computeStats(p.id, matches, predictions, champPredictions, settings.tournamentWinner, scoring) }));
 
   const sortStandings = (list, tab) => {
