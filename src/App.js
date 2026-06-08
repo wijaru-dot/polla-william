@@ -1780,7 +1780,7 @@ export default function App() {
                 {currentUser.role === "player" && !currentUser.paidGroups && !currentUser.paidElim && (
                   <div className="warning-box">⚠️ Tu pago está pendiente. Contacta a William para activar tu cuenta.</div>
                 )}
-                {currentUser.role === "player" && (
+                {(currentUser.role === "player" || isAdminPlayer) && (
                   <ChampPrediction userId={currentUser.id} champPredictions={champPredictions} tournamentWinner={settings.tournamentWinner} onSave={saveChampPred} matches={matches} scoring={scoring} />
                 )}
                 <div className="tabs">
