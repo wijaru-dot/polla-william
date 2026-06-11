@@ -501,8 +501,8 @@ function CountdownBanner({ matches }) {
     return () => clearInterval(timer);
   }, []);
 
-  const WC_START = new Date("2026-06-11T00:00:00Z");
-  const WC_DAY_END = new Date("2026-06-12T00:00:00Z");
+  const WC_START = new Date("2026-06-11T19:00:00Z"); // Inicio primer partido: México vs Sudáfrica
+  const WC_DAY_END = new Date("2026-06-12T19:00:00Z"); // 24 horas después
   const isBeforeWC = now < WC_START;
   const isMatchDay = now >= WC_START && now < WC_DAY_END;
   const isOngoing = now >= WC_DAY_END;
