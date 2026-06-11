@@ -426,7 +426,7 @@ const css = `
   .live-minute { font-size: 11px; color: var(--red); margin-top: 2px; }
 
   /* COUNTDOWN BANNER */
-  .countdown-banner { background: linear-gradient(135deg, #004D20, #1B5E20); border-bottom: 2px solid var(--gold); padding: 10px 16px; display: flex; align-items: center; justify-content: center; gap: 10px; position: sticky; top: 64px; z-index: 99; min-height: 56px; }
+  .countdown-banner { background: linear-gradient(135deg, #004D20, #1B5E20); border-bottom: 2px solid var(--gold); padding: 10px 16px; display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; }
   .countdown-banner.match-day { background: linear-gradient(135deg, #004D20, #1B5E20); border-bottom: 2px solid var(--gold); }
   .countdown-banner.next-match { background: linear-gradient(135deg, #004D20, #1B5E20); }
   .countdown-units { display: flex; gap: 12px; align-items: center; }
@@ -566,8 +566,7 @@ function CountdownBanner({ matches }) {
         <Confetti />
         <span className="countdown-icon">🐔</span>
         <div style={{ textAlign: "center", zIndex: 1 }}>
-          <div className="countdown-label" style={{ color: "var(--gold)", fontWeight: 700, fontSize: 13 }}>¡EL MUNDIAL 2026 HA COMENZADO!</div>
-          <div className="countdown-label">⚽ ¡A PEGAR POLLAS! 🏆</div>
+          <div className="countdown-label" style={{ color: "var(--gold)", fontWeight: 700, fontSize: 13 }}>¡EL MUNDIAL 2026 HA COMENZADO! · FASE DE GRUPOS 🏆</div>
         </div>
         <span className="countdown-icon">🏆</span>
       </div>
