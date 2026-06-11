@@ -426,13 +426,17 @@ const css = `
   .live-minute { font-size: 11px; color: var(--red); margin-top: 2px; }
 
   /* COUNTDOWN BANNER */
-  .countdown-banner { background: linear-gradient(135deg, #004D20, #1B5E20); border-bottom: 2px solid var(--gold); padding: 8px 16px; display: flex; align-items: center; justify-content: center; gap: 10px; position: sticky; top: 64px; z-index: 99; }
-  .countdown-banner.match-day { background: linear-gradient(135deg, #B8860B, #FFD700); }
-  .countdown-days { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: var(--gold); letter-spacing: 2px; line-height: 1; }
-  .countdown-banner.match-day .countdown-days { color: var(--green-deep); }
-  .countdown-label { font-size: 11px; color: rgba(255,255,255,0.8); letter-spacing: 1px; text-align: center; line-height: 1.3; }
-  .countdown-banner.match-day .countdown-label { color: var(--green-deep); font-weight: 700; }
-  .countdown-icon { font-size: 20px; }
+  .countdown-banner { background: linear-gradient(135deg, #004D20, #1B5E20); border-bottom: 2px solid var(--gold); padding: 10px 16px; display: flex; align-items: center; justify-content: center; gap: 10px; position: sticky; top: 64px; z-index: 99; min-height: 56px; }
+  .countdown-banner.match-day { background: linear-gradient(135deg, #004D20, #1B5E20); border-bottom: 2px solid var(--gold); }
+  .countdown-banner.next-match { background: linear-gradient(135deg, #004D20, #1B5E20); }
+  .countdown-units { display: flex; gap: 12px; align-items: center; }
+  .countdown-unit { display: flex; flex-direction: column; align-items: center; line-height: 1; }
+  .countdown-unit-value { font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: var(--gold); letter-spacing: 2px; }
+  .countdown-unit-label { font-size: 9px; color: rgba(255,255,255,0.6); letter-spacing: 1px; margin-top: 2px; }
+  .countdown-separator { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--gold); opacity: 0.6; margin-bottom: 6px; }
+  .countdown-label { font-size: 11px; color: rgba(255,255,255,0.8); letter-spacing: 1px; text-align: center; line-height: 1.4; }
+  .countdown-label strong { color: var(--gold); }
+  .countdown-icon { font-size: 22px; }
 
   /* TOURNAMENT CARD */
   .tournament-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; }
@@ -467,35 +471,146 @@ function SelectorAvatar({ avatarActual, onSeleccionar, onCerrar }) {
   );
 }
 // ── COUNTDOWN BANNER ──────────────────────────────────────────────────────────
-function CountdownBanner() {
-  const WC_START = new Date("2026-06-11T00:00:00");
-  const now = new Date();
-  const diffMs = WC_START - now;
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+function CountdownBanner({ matches }) {
+  const [now, setNow] = useState(new Date());
 
-  if (diffDays < 0) return null; // After World Cup started, hide banner
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
-  if (diffDays === 0) {
+  const WC_START = new Date("2026-06-11T00:00:00Z");
+  const isMatchDay = now >= WC_START;
+
+  function getNextMatches() {
+    const matchList = Object.values(matches || {}).filter(m => m.enabled !== false && m.phase !== "test");
+    const upcoming = matchList.filter(m => new Date(m.datetime) > now).sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+    if (!upcoming.length) return { matches: [], target: null };
+    const nextTime = upcoming[0].datetime;
+    const sameSlot = upcoming.filter(m => m.datetime === nextTime);
+    return { matches: sameSlot, target: new Date(nextTime) };
+  }
+
+  function getLiveMatches() {
+    const matchList = Object.values(matches || {}).filter(m => m.enabled !== false && m.phase !== "test");
+    return matchList.filter(m => {
+      const start = new Date(m.datetime);
+      const diffMin = (now - start) / 60000;
+      return diffMin >= 0 && diffMin <= 110;
+    });
+  }
+
+  function getCountdown(target) {
+    const diff = target - now;
+    if (diff <= 0) return null;
+    const days = Math.floor(diff / 86400000);
+    const hours = Math.floor((diff % 86400000) / 3600000);
+    const mins = Math.floor((diff % 3600000) / 60000);
+    return { days, hours, mins };
+  }
+
+  // ── ANTES DEL MUNDIAL ──
+  if (!isMatchDay) {
+    const diff = WC_START - now;
+    const days = Math.floor(diff / 86400000);
+    const hours = Math.floor((diff % 86400000) / 3600000);
+    const mins = Math.floor((diff % 3600000) / 60000);
     return (
-      <div className="countdown-banner match-day">
-        <span className="countdown-icon">🌍</span>
-        <div style={{ textAlign: "center" }}>
-          <div className="countdown-days">¡HOY ES EL DÍA!</div>
-          <div className="countdown-label">¡EL MUNDIAL 2026 COMIENZA AHORA! ⚽🏆</div>
+      <div className="countdown-banner">
+        <span className="countdown-icon">🐔</span>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+          <div className="countdown-units">
+            <div className="countdown-unit">
+              <span className="countdown-unit-value">{String(days).padStart(2,"0")}</span>
+              <span className="countdown-unit-label">DÍAS</span>
+            </div>
+            <span className="countdown-separator">:</span>
+            <div className="countdown-unit">
+              <span className="countdown-unit-value">{String(hours).padStart(2,"0")}</span>
+              <span className="countdown-unit-label">HRS</span>
+            </div>
+            <span className="countdown-separator">:</span>
+            <div className="countdown-unit">
+              <span className="countdown-unit-value">{String(mins).padStart(2,"0")}</span>
+              <span className="countdown-unit-label">MIN</span>
+            </div>
+          </div>
+          <div className="countdown-label">PARA EL MUNDIAL 2026</div>
         </div>
         <span className="countdown-icon">🏆</span>
       </div>
     );
   }
 
-  return (
-    <div className="countdown-banner">
-      <span className="countdown-icon">⚽</span>
-      <div style={{ textAlign: "center" }}>
-        <div className="countdown-days">{diffDays} DÍAS</div>
-        <div className="countdown-label">PARA EL MUNDIAL 2026 🌍</div>
+  // ── DURANTE EL MUNDIAL ──
+  const liveMatches = getLiveMatches();
+  const { matches: nextMatches, target } = getNextMatches();
+  const countdown = target ? getCountdown(target) : null;
+
+  // Partidos en curso
+  if (liveMatches.length > 0) {
+    return (
+      <div className="countdown-banner match-day">
+        <span className="countdown-icon">⚽</span>
+        <div style={{ textAlign: "center" }}>
+          <div className="countdown-label" style={{ color: "var(--gold)", fontWeight: 700, fontSize: 12, marginBottom: 2 }}>
+            {liveMatches.length === 1 ? "EN JUEGO AHORA" : `⚽ ${liveMatches.length} PARTIDOS EN JUEGO`}
+          </div>
+          {liveMatches.slice(0, 2).map(m => (
+            <div key={m.id} className="countdown-label">
+              <strong>{TEAM_FLAGS[m.homeTeam] || ""} {m.homeTeam}</strong> vs <strong>{m.awayTeam} {TEAM_FLAGS[m.awayTeam] || ""}</strong>
+            </div>
+          ))}
+        </div>
+        <span className="countdown-icon">🔴</span>
       </div>
-      <span className="countdown-icon">🌍</span>
+    );
+  }
+
+  // Próximo partido con countdown
+  if (nextMatches.length > 0 && countdown) {
+    return (
+      <div className="countdown-banner next-match">
+        <span className="countdown-icon">🐔</span>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+          <div className="countdown-units">
+            {countdown.days > 0 && <>
+              <div className="countdown-unit">
+                <span className="countdown-unit-value">{String(countdown.days).padStart(2,"0")}</span>
+                <span className="countdown-unit-label">DÍAS</span>
+              </div>
+              <span className="countdown-separator">:</span>
+            </>}
+            <div className="countdown-unit">
+              <span className="countdown-unit-value">{String(countdown.hours).padStart(2,"0")}</span>
+              <span className="countdown-unit-label">HRS</span>
+            </div>
+            <span className="countdown-separator">:</span>
+            <div className="countdown-unit">
+              <span className="countdown-unit-value">{String(countdown.mins).padStart(2,"0")}</span>
+              <span className="countdown-unit-label">MIN</span>
+            </div>
+          </div>
+          <div className="countdown-label">
+            {nextMatches.length === 1
+              ? <><strong>{TEAM_FLAGS[nextMatches[0].homeTeam] || ""} {nextMatches[0].homeTeam}</strong> vs <strong>{nextMatches[0].awayTeam} {TEAM_FLAGS[nextMatches[0].awayTeam] || ""}</strong></>
+              : <>{nextMatches.map((m, i) => <span key={m.id}>{i > 0 ? "  ·  " : ""}{TEAM_FLAGS[m.homeTeam] || ""}{m.homeTeam} vs {m.awayTeam}{TEAM_FLAGS[m.awayTeam] || ""}</span>)}</>
+            }
+          </div>
+        </div>
+        <span className="countdown-icon">🏆</span>
+      </div>
+    );
+  }
+
+  // Fallback — Mundial en curso pero sin más partidos programados
+  return (
+    <div className="countdown-banner match-day">
+      <span className="countdown-icon">🐔</span>
+      <div style={{ textAlign: "center" }}>
+        <div className="countdown-label" style={{ color: "var(--gold)", fontWeight: 700 }}>¡MUNDIAL 2026 EN CURSO! 🏆</div>
+      </div>
+      <span className="countdown-icon">🏆</span>
     </div>
   );
 }
@@ -1767,7 +1882,7 @@ export default function App() {
           )}
 
           {/* COUNTDOWN BANNER */}
-          <CountdownBanner />
+          <CountdownBanner matches={matches} />
 
           <div className="content">
 
