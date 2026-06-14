@@ -426,13 +426,15 @@ const css = `
   .live-minute { font-size: 11px; color: var(--red); margin-top: 2px; }
 
   /* COUNTDOWN BANNER */
-  .countdown-banner { background: linear-gradient(135deg, #004D20, #1B5E20); border-bottom: 2px solid var(--gold); padding: 8px 16px; display: flex; align-items: center; justify-content: center; gap: 10px; position: sticky; top: 64px; z-index: 99; }
+  .countdown-banner { background: linear-gradient(135deg, #004D20, #1B5E20); border-bottom: 2px solid var(--gold); padding: 8px 16px; display: flex; align-items: center; justify-content: center; gap: 10px; position: sticky; top: 64px; z-index: 99; min-height: 52px; }
   .countdown-banner.match-day { background: linear-gradient(135deg, #B8860B, #FFD700); }
   .countdown-days { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: var(--gold); letter-spacing: 2px; line-height: 1; }
   .countdown-banner.match-day .countdown-days { color: var(--green-deep); }
   .countdown-label { font-size: 11px; color: rgba(255,255,255,0.8); letter-spacing: 1px; text-align: center; line-height: 1.3; }
   .countdown-banner.match-day .countdown-label { color: var(--green-deep); font-weight: 700; }
   .countdown-icon { font-size: 20px; }
+  .banner-result { font-size: 12px; color: var(--gold); font-weight: 700; letter-spacing: 0.5px; text-align: center; animation: fadeSlide 0.5s ease; }
+  @keyframes fadeSlide { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
   /* TOURNAMENT CARD */
   .tournament-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; }
@@ -467,14 +469,67 @@ function SelectorAvatar({ avatarActual, onSeleccionar, onCerrar }) {
   );
 }
 // ── COUNTDOWN BANNER ──────────────────────────────────────────────────────────
-function CountdownBanner() {
+function CountdownBanner({ matches }) {
   const WC_START = new Date("2026-06-11T00:00:00");
   const now = new Date();
   const diffMs = WC_START - now;
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const [resultIdx, setResultIdx] = useState(0);
 
-  if (diffDays < 0) return null; // After World Cup started, hide banner
+  // Partidos terminados ayer
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().slice(0, 10);
 
+  const yesterdayResults = Object.values(matches || {}).filter(m => {
+    if (m.status !== "finished" || !m.result || m.phase === "test") return false;
+    const matchDate = new Date(m.datetime).toISOString().slice(0, 10);
+    return matchDate === yesterdayStr;
+  }).sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+
+  // Rotar resultados cada 3 segundos
+  useEffect(() => {
+    if (yesterdayResults.length <= 1) return;
+    const timer = setInterval(() => {
+      setResultIdx(i => (i + 1) % yesterdayResults.length);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [yesterdayResults.length]);
+
+  // Detectar fase actual
+  function getCurrentPhase() {
+    const matchList = Object.values(matches || {}).filter(m => m.phase !== "test");
+    const phaseOrder = ["groups", "r32", "r16", "qf", "sf", "final"];
+    const phaseLabels = {
+      groups: "FASE DE GRUPOS",
+      r32: "RONDA DE 32",
+      r16: "OCTAVOS DE FINAL",
+      qf: "CUARTOS DE FINAL",
+      sf: "SEMIFINALES",
+      final: "GRAN FINAL"
+    };
+    for (const phase of phaseOrder) {
+      const hasActive = matchList.some(m => m.phase === phase && m.status !== "finished");
+      if (hasActive) return phaseLabels[phase];
+    }
+    return "MUNDIAL 2026";
+  }
+
+  // ── ANTES DEL MUNDIAL ──
+  if (diffDays > 0) {
+    return (
+      <div className="countdown-banner">
+        <span className="countdown-icon">⚽</span>
+        <div style={{ textAlign: "center" }}>
+          <div className="countdown-days">{diffDays} DÍAS</div>
+          <div className="countdown-label">PARA EL MUNDIAL 2026 🌍</div>
+        </div>
+        <span className="countdown-icon">🌍</span>
+      </div>
+    );
+  }
+
+  // ── DÍA DEL INICIO ──
   if (diffDays === 0) {
     return (
       <div className="countdown-banner match-day">
@@ -488,14 +543,24 @@ function CountdownBanner() {
     );
   }
 
+  // ── MUNDIAL EN CURSO ──
+  const phase = getCurrentPhase();
+  const currentResult = yesterdayResults[resultIdx];
+
   return (
     <div className="countdown-banner">
-      <span className="countdown-icon">⚽</span>
+      <span className="countdown-icon">🐔</span>
       <div style={{ textAlign: "center" }}>
-        <div className="countdown-days">{diffDays} DÍAS</div>
-        <div className="countdown-label">PARA EL MUNDIAL 2026 🌍</div>
+        <div className="countdown-label" style={{ color: "var(--gold)", fontWeight: 700, fontSize: 12 }}>
+          🌍 MUNDIAL 2026 · {phase}
+        </div>
+        {currentResult && (
+          <div key={resultIdx} className="banner-result">
+            {TEAM_FLAGS[currentResult.homeTeam] || ""} {currentResult.homeTeam} {currentResult.result.home} - {currentResult.result.away} {currentResult.awayTeam} {TEAM_FLAGS[currentResult.awayTeam] || ""}
+          </div>
+        )}
       </div>
-      <span className="countdown-icon">🌍</span>
+      <span className="countdown-icon">🏆</span>
     </div>
   );
 }
@@ -1767,7 +1832,7 @@ export default function App() {
           )}
 
           {/* COUNTDOWN BANNER */}
-          <CountdownBanner />
+          <CountdownBanner matches={matches} />
 
           <div className="content">
 
