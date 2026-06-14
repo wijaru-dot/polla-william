@@ -1466,7 +1466,7 @@ export default function App() {
     if (!currentUser?.paidGroups && !currentUser?.paidElim && currentUser?.role !== "admin") return showNotif("⚠️ Pago pendiente");
     if (!activeTournamentId) return;
     const playerName = participants.find(p => p.id === currentUser.id)?.name || currentUser.name;
-    fbSet(dbRef(db, `tournaments/${activeTournamentId}/predictions/${matchId}/${currentUser.id}`), { ...pred, userName: playerName, savedAt: new Date().toISOString() });
+    fbSet(dbRef(db, `tournaments/${activeTournamentId}/predictions/${matchId}/${currentUser.id}`), { ...pred, userName: playerName, savedAt: new Date().toLocaleString("es-CO", { timeZone: "America/Toronto" }) });
     showNotif("✅ Predicción guardada");
   }
 
