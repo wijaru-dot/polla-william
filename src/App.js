@@ -473,18 +473,7 @@ function CountdownBanner() {
   const diffMs = WC_START - now;
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffDays < 0) {
-    return (
-      <div className="countdown-banner">
-        <span className="countdown-icon">🐔</span>
-        <div style={{ textAlign: "center" }}>
-          <div className="countdown-days">¡EL MUNDIAL 2026 HA COMENZADO!</div>
-          <div className="countdown-label">FASE DE GRUPOS 🏆</div>
-        </div>
-        <span className="countdown-icon">🏆</span>
-      </div>
-    );
-  }
+  if (diffDays < 0) return null; // After World Cup started, hide banner
 
   if (diffDays === 0) {
     return (
@@ -1477,7 +1466,7 @@ export default function App() {
     if (!currentUser?.paidGroups && !currentUser?.paidElim && currentUser?.role !== "admin") return showNotif("⚠️ Pago pendiente");
     if (!activeTournamentId) return;
     const playerName = participants.find(p => p.id === currentUser.id)?.name || currentUser.name;
-    fbSet(dbRef(db, `tournaments/${activeTournamentId}/predictions/${matchId}/${currentUser.id}`), { ...pred, userName: playerName });
+    fbSet(dbRef(db, `tournaments/${activeTournamentId}/predictions/${matchId}/${currentUser.id}`), { ...pred, userName: playerName, savedAt: new Date().toISOString() });
     showNotif("✅ Predicción guardada");
   }
 
