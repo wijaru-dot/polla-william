@@ -178,7 +178,7 @@ function calcChampPoints(pred, winner, champPoints) {
 
 function computeStats(participantId, matches, predictions, champPredictions, tournamentWinner, scoring) {
   let total = 0, exact = 0, wins = 0, maxStreak = 0, tempStreak = 0;
-  let groupsPts = 0, elimPts = 0, played = 0, noPred = 0;
+  let groupsPts = 0, elimPts = 0, played = 0, noPred = 0, goalDiff = 0;
   const champPts = calcChampPoints(champPredictions?.[participantId]?.team, tournamentWinner, scoring?.champion);
   const finishedMatches = Object.values(matches || {}).filter(m => m.status === "finished").sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
   const totalMatches = finishedMatches.length;
@@ -186,8 +186,10 @@ function computeStats(participantId, matches, predictions, champPredictions, tou
   finishedMatches.forEach(m => {
     const pred = predictions?.[m.id]?.[participantId];
     const pts = calcPoints(pred, m.result, scoring) ?? 0;
-    if (pred) played++;
-    else noPred++;
+    if (pred) {
+      played++;
+      goalDiff += Math.abs(parseInt(m.result.home) - parseInt(pred.home)) + Math.abs(parseInt(m.result.away) - parseInt(pred.away));
+    } else noPred++;
     total += pts;
     if (pts >= (scoring?.exact || 3) + (scoring?.winner || 2)) exact++;
     if (pts >= (scoring?.winner || 2)) { wins++; tempStreak++; maxStreak = Math.max(maxStreak, tempStreak); }
@@ -199,7 +201,7 @@ function computeStats(participantId, matches, predictions, champPredictions, tou
   total += champPts;
   const knockoutPoints = elimPts + champPts;
   const pct = played > 0 ? Math.round((wins / played) * 100) : 0;
-  return { total, exact, wins, groupsPts, elimPts, knockoutPoints, champPts, streak: maxStreak, pct, played, noPred, totalMatches };
+  return { total, exact, wins, groupsPts, elimPts, knockoutPoints, champPts, streak: maxStreak, pct, played, noPred, totalMatches, goalDiff };
 }
 
 // ── CSS ────────────────────────────────────────────────────────────────────────
@@ -467,42 +469,13 @@ function SelectorAvatar({ avatarActual, onSeleccionar, onCerrar }) {
   );
 }
 // ── COUNTDOWN BANNER ──────────────────────────────────────────────────────────
-function CountdownBanner({ matches }) {
+function CountdownBanner() {
   const WC_START = new Date("2026-06-11T00:00:00");
   const now = new Date();
   const diffMs = WC_START - now;
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-  function getCurrentPhase() {
-    const matchList = Object.values(matches || {}).filter(m => m.phase !== "test");
-    const phaseOrder = ["groups", "r32", "r16", "qf", "sf", "final"];
-    const phaseLabels = {
-      groups: "FASE DE GRUPOS",
-      r32: "RONDA DE 32",
-      r16: "OCTAVOS DE FINAL",
-      qf: "CUARTOS DE FINAL",
-      sf: "SEMIFINALES",
-      final: "GRAN FINAL"
-    };
-    for (const phase of phaseOrder) {
-      const hasActive = matchList.some(m => m.phase === phase && m.status !== "finished");
-      if (hasActive) return phaseLabels[phase];
-    }
-    return "MUNDIAL 2026";
-  }
-
-  if (diffDays > 0) {
-    return (
-      <div className="countdown-banner">
-        <span className="countdown-icon">⚽</span>
-        <div style={{ textAlign: "center" }}>
-          <div className="countdown-days">{diffDays} DÍAS</div>
-          <div className="countdown-label">PARA EL MUNDIAL 2026 🌍</div>
-        </div>
-        <span className="countdown-icon">🌍</span>
-      </div>
-    );
-  }
+  if (diffDays < 0) return null; // After World Cup started, hide banner
 
   if (diffDays === 0) {
     return (
@@ -519,13 +492,12 @@ function CountdownBanner({ matches }) {
 
   return (
     <div className="countdown-banner">
-      <span className="countdown-icon">🐔</span>
+      <span className="countdown-icon">⚽</span>
       <div style={{ textAlign: "center" }}>
-        <div className="countdown-label" style={{ color: "var(--gold)", fontWeight: 700, fontSize: 12 }}>
-          🌍 MUNDIAL 2026 · {getCurrentPhase()}
-        </div>
+        <div className="countdown-days">{diffDays} DÍAS</div>
+        <div className="countdown-label">PARA EL MUNDIAL 2026 🌍</div>
       </div>
-      <span className="countdown-icon">🏆</span>
+      <span className="countdown-icon">🌍</span>
     </div>
   );
 }
@@ -664,6 +636,21 @@ function StatsModal({ participant, stats, onClose, matches, predictions, scoring
 
   const phasePct = matchHistory.length > 0 ? Math.round((phaseWins / matchHistory.length) * 100) : 0;
 
+  // Calcular noPred y goalDiff por fase
+  const allFinishedForPhase = tab === "groups"
+    ? allFinished.filter(m => m.phase === "groups" || m.phase === "test")
+    : tab === "elim"
+    ? allFinished.filter(m => isKnockoutPhase(m.phase))
+    : allFinished;
+
+  const phaseNoPred = allFinishedForPhase.filter(m => !predictions?.[m.id]?.[participant.id]).length;
+
+  const phaseGoalDiff = allFinishedForPhase.reduce((acc, m) => {
+    const pred = predictions?.[m.id]?.[participant.id];
+    if (!pred) return acc;
+    return acc + Math.abs(parseInt(m.result.home) - parseInt(pred.home)) + Math.abs(parseInt(m.result.away) - parseInt(pred.away));
+  }, 0);
+
   const phaseStreak = matchHistory.length === 0 ? 0 : (() => {
     let max = 0, cur = 0;
     [...matchHistory].reverse().forEach(m => {
@@ -709,6 +696,8 @@ function StatsModal({ participant, stats, onClose, matches, predictions, scoring
           <div className="stat-box"><div className="stat-val">{displayStreak}</div><div className="stat-lbl">MEJOR RACHA</div></div>
           {tab === "total" && <div className="stat-box"><div className="stat-val">{stats.groupsPts}</div><div className="stat-lbl">PTS GRUPOS</div></div>}
           {tab === "total" && <div className="stat-box"><div className="stat-val">{stats.elimPts}</div><div className="stat-lbl">PTS ELIM.</div></div>}
+          <div className="stat-box"><div className="stat-val">{phaseNoPred}</div><div className="stat-lbl">SIN PREDECIR</div></div>
+          <div className="stat-box"><div className="stat-val">{phaseGoalDiff}</div><div className="stat-lbl" style={{fontSize:8}}>CERCANÍA AL MARCADOR<br/><span style={{fontSize:7,color:"var(--text3)"}}>menor es mejor</span></div></div>
         </div>
 
         {tab !== "elim" && stats.champPts > 0 && <div className="info-box">🏆 +{stats.champPts} puntos por acertar el campeón</div>}
@@ -1496,7 +1485,7 @@ export default function App() {
     if (!currentUser?.paidGroups && !currentUser?.paidElim && currentUser?.role !== "admin") return showNotif("⚠️ Pago pendiente");
     if (!activeTournamentId) return;
     const playerName = participants.find(p => p.id === currentUser.id)?.name || currentUser.name;
-    fbSet(dbRef(db, `tournaments/${activeTournamentId}/predictions/${matchId}/${currentUser.id}`), { ...pred, userName: playerName, savedAt: new Date().toLocaleString("es-CO", { timeZone: "America/Toronto" }) });
+    fbSet(dbRef(db, `tournaments/${activeTournamentId}/predictions/${matchId}/${currentUser.id}`), { ...pred, userName: playerName });
     showNotif("✅ Predicción guardada");
   }
 
@@ -1672,7 +1661,7 @@ export default function App() {
       b.exact - a.exact ||
       b.wins - a.wins ||
       a.noPred - b.noPred ||
-      a.name.localeCompare(b.name)
+      a.goalDiff - b.goalDiff
     );
   };
 
@@ -1797,7 +1786,7 @@ export default function App() {
           )}
 
           {/* COUNTDOWN BANNER */}
-          <CountdownBanner matches={matches} />
+          <CountdownBanner />
 
           <div className="content">
 
