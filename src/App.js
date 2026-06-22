@@ -398,6 +398,12 @@ const css = `
   .group-table tr:last-child td { border-bottom: none; }
   .group-table tr.qualified { background: rgba(0,200,83,0.06); }
   .group-table tr.qualified-3rd { background: rgba(255,215,0,0.05); }
+  .group-table tr.divider td { border-top: 2px solid var(--red); }
+  .group-nav { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 14px; background: var(--bg2); border-bottom: 1px solid var(--border); position: sticky; top: 120px; z-index: 90; }
+  .group-nav-btn { width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--border); background: none; color: var(--text2); font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
+  .group-nav-btn:hover { background: var(--green-dark); border-color: var(--green); color: white; }
+  .group-nav-btn.special { border-radius: 8px; width: auto; padding: 0 8px; font-size: 11px; }
+  .scroll-top-btn { position: fixed; bottom: 80px; right: 16px; width: 40px; height: 40px; border-radius: 50%; background: var(--green-dark); border: 2px solid var(--green); color: white; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 200; box-shadow: 0 4px 12px rgba(0,0,0,0.4); transition: opacity 0.3s; }
   .qualify-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
   .qualify-1st { background: var(--green); box-shadow: 0 0 4px var(--green); }
   .qualify-2nd { background: #4CAF50; }
@@ -1070,7 +1076,7 @@ function GroupCard({ groupLetter, matches }) {
   const groupMatches = Object.values(matches).filter(m => m.group === groupLetter && m.phase === "groups" && m.status === "finished").sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
 
   return (
-    <div className="group-card">
+    <div className="group-card" id={`group-${groupLetter}`}>
       <div className="group-header">
         <div className="group-header-title">Grupo {groupLetter}</div>
         <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>{table[0]?.pts || 0} pts líder</div>
@@ -1079,7 +1085,7 @@ function GroupCard({ groupLetter, matches }) {
         <thead><tr><th>Equipo</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>GD</th><th>Pts</th></tr></thead>
         <tbody>
           {table.map((team, idx) => (
-            <tr key={team.name} className={idx < 2 ? "qualified" : idx === 2 ? "qualified-3rd" : ""}>
+            <tr key={team.name} className={`${idx < 2 ? "qualified" : idx === 2 ? "qualified-3rd" : ""} ${idx === 2 ? "divider" : ""}`}>
               <td>
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                   {idx === 0 ? <span className="qualify-dot qualify-1st" /> : idx === 1 ? <span className="qualify-dot qualify-2nd" /> : idx === 2 ? <span className="qualify-dot qualify-3rd" /> : null}
@@ -1108,6 +1114,48 @@ function GroupCard({ groupLetter, matches }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── TABLA DE TERCEROS ──────────────────────────────────────────────────────────
+function ThirdPlaceTable({ matches }) {
+  const groups = ["A","B","C","D","E","F","G","H","I","J","K","L"];
+  const thirds = groups.map(g => {
+    const table = calcGroupStandings(g, matches);
+    if (table.length < 3) return null;
+    return { ...table[2], group: g };
+  }).filter(Boolean);
+
+  // Ordenar por pts, GD, GF
+  thirds.sort((a, b) => b.pts - a.pts || (b.gf - b.gc) - (a.gf - a.gc) || b.gf - a.gf);
+
+  return (
+    <div className="group-card" id="group-3RD">
+      <div className="group-header">
+        <div className="group-header-title">🥉 Mejor Tercer Lugar</div>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>Top 8 clasifican</div>
+      </div>
+      <table className="group-table">
+        <thead><tr><th>Equipo</th><th>Gr</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>GD</th><th>Pts</th></tr></thead>
+        <tbody>
+          {thirds.map((team, idx) => (
+            <tr key={team.name} className={`${idx < 8 ? "qualified-3rd" : ""} ${idx === 8 ? "divider" : ""}`}>
+              <td>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  {idx < 8 ? <span className="qualify-dot qualify-3rd" /> : null}
+                  <span>{TEAM_FLAGS[team.name] || "🏳️"}</span>
+                  <span style={{ fontSize: 11 }}>{team.name}</span>
+                </div>
+              </td>
+              <td style={{ color: "var(--text3)", fontSize: 11 }}>{team.group}</td>
+              <td>{team.pj}</td><td>{team.pg}</td><td>{team.pe}</td><td>{team.pp}</td>
+              <td style={{ color: team.gf - team.gc > 0 ? "var(--green)" : team.gf - team.gc < 0 ? "var(--red)" : "var(--text3)" }}>{team.gf - team.gc > 0 ? "+" : ""}{team.gf - team.gc}</td>
+              <td style={{ fontWeight: 700 }}>{team.pts}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -1831,7 +1879,24 @@ export default function App() {
                   <span style={{ color: "#4CAF50" }}>●</span> 2do clasificado &nbsp;
                   <span style={{ color: "var(--gold)" }}>●</span> Posible mejor 3ro
                 </div>
+                <div className="group-nav">
+                  {["A","B","C","D","E","F","G","H","I","J","K","L"].map(g => (
+                    <button key={g} className="group-nav-btn" onClick={() => {
+                      const el = document.getElementById(`group-${g}`);
+                      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}>{g}</button>
+                  ))}
+                  <button className="group-nav-btn special" onClick={() => {
+                    const el = document.getElementById("group-3RD");
+                    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}>3RD</button>
+                </div>
                 {["A","B","C","D","E","F","G","H","I","J","K","L"].map(g => <GroupCard key={g} groupLetter={g} matches={matches} />)}
+                <ThirdPlaceTable matches={matches} />
+                <button className="scroll-top-btn" onClick={() => {
+                  const el = document.getElementById("group-A");
+                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}>↑</button>
               </div>
             )}
 
