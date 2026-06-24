@@ -1109,6 +1109,15 @@ function TeamSearch({ matches }) {
               <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", fontSize: 11, color: "var(--text3)", fontWeight: 600 }}>
                 {results.length} partido{results.length !== 1 ? "s" : ""} encontrado{results.length !== 1 ? "s" : ""}
               </div>
+              {(() => {
+                const teamName = results[0].homeTeam.toLowerCase().includes(query.toLowerCase()) ? results[0].homeTeam : results[0].awayTeam;
+                const group = results[0].group || "—";
+                return (
+                  <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--border)", fontSize: 12, color: "var(--gold)", fontWeight: 600 }}>
+                    {TEAM_FLAGS[teamName] || "🏳️"} {teamName} · Grupo {group}
+                  </div>
+                );
+              })()}
               {results.map(m => (
                 <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", borderBottom: "1px solid var(--border)", fontSize: 12 }}>
                   <span style={{ flex: 1 }}>{TEAM_FLAGS[m.homeTeam] || "🏳️"} {m.homeTeam}</span>
