@@ -1070,6 +1070,60 @@ function calcGroupStandings(groupLetter, matches) {
   return Object.values(teams).sort((a, b) => b.pts - a.pts || (b.gf - b.gc) - (a.gf - a.gc) || b.gf - a.gf);
 }
 
+// ── TEAM SEARCH ───────────────────────────────────────────────────────────────
+function TeamSearch({ matches }) {
+  const [query, setQuery] = useState("");
+
+  const finishedMatches = Object.values(matches || {})
+    .filter(m => m.status === "finished" && m.phase !== "test")
+    .sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
+
+  const results = query.trim().length >= 2
+    ? finishedMatches.filter(m =>
+        m.homeTeam.toLowerCase().includes(query.toLowerCase()) ||
+        m.awayTeam.toLowerCase().includes(query.toLowerCase())
+      )
+    : [];
+
+  return (
+    <div style={{ padding: "8px 14px" }}>
+      <div style={{ position: "relative" }}>
+        <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "var(--text3)" }}>🔍</span>
+        <input
+          className="input"
+          style={{ paddingLeft: 32, fontSize: 13 }}
+          placeholder="Buscar equipo..."
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+        />
+        {query.length > 0 && (
+          <button onClick={() => setQuery("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text3)", cursor: "pointer", fontSize: 16 }}>✕</button>
+        )}
+      </div>
+      {query.trim().length >= 2 && (
+        <div style={{ marginTop: 8, background: "var(--card)", borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden" }}>
+          {results.length === 0 ? (
+            <div style={{ padding: "12px", textAlign: "center", color: "var(--text3)", fontSize: 13 }}>No se encontraron resultados</div>
+          ) : (
+            <>
+              <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", fontSize: 11, color: "var(--text3)", fontWeight: 600 }}>
+                {results.length} partido{results.length !== 1 ? "s" : ""} encontrado{results.length !== 1 ? "s" : ""}
+              </div>
+              {results.map(m => (
+                <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", borderBottom: "1px solid var(--border)", fontSize: 12 }}>
+                  <span style={{ flex: 1 }}>{TEAM_FLAGS[m.homeTeam] || "🏳️"} {m.homeTeam}</span>
+                  <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, color: "var(--gold)", padding: "0 10px" }}>{m.result.home} - {m.result.away}</span>
+                  <span style={{ flex: 1, textAlign: "right" }}>{m.awayTeam} {TEAM_FLAGS[m.awayTeam] || "🏳️"}</span>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function GroupCard({ groupLetter, matches }) {
   const [showResults, setShowResults] = useState(false);
   const table = calcGroupStandings(groupLetter, matches);
@@ -1879,6 +1933,10 @@ export default function App() {
                   <span style={{ color: "#4CAF50" }}>●</span> 2do clasificado &nbsp;
                   <span style={{ color: "var(--gold)" }}>●</span> Posible mejor 3ro
                 </div>
+
+                {/* BUSCADOR */}
+                <TeamSearch matches={matches} />
+
                 <div className="group-nav">
                   {["A","B","C","D","E","F","G","H","I","J","K","L"].map(g => (
                     <button key={g} className="group-nav-btn" onClick={() => {
