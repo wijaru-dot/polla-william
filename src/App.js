@@ -2276,8 +2276,10 @@ export default function App() {
                       <button className="btn btn-primary btn-full" onClick={addMatch}>⚽ Agregar partido</button>
                     </div>
                     {activeTournament?.type === "worldcup" && (
-                      <button className="btn btn-gold btn-full" style={{ marginBottom: 12 }} onClick={loadWorldCupMatches}>🌍 Cargar partidos Mundial 2026</button>
-                      <button className="btn btn-gold btn-full" style={{ marginBottom: 12 }} onClick={loadKnockoutMatches}>⚔️ Cargar partidos eliminatorios</button>
+                      <>
+                        <button className="btn btn-gold btn-full" style={{ marginBottom: 12 }} onClick={loadWorldCupMatches}>🌍 Cargar partidos Mundial 2026</button>
+                        <button className="btn btn-gold btn-full" style={{ marginBottom: 12 }} onClick={loadKnockoutMatches}>⚔️ Cargar partidos eliminatorios</button>
+                      </>
                     )}
                     <button className="btn btn-secondary btn-full" style={{ marginBottom: 12 }} onClick={loadFriendlyMatches}>🧪 Cargar amistosos de prueba</button>
                     <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
