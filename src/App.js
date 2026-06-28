@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { db, auth } from "./firebase";
-import { TEAM_FLAGS, WC2026_MATCHES } from "./worldcupData";
+import { TEAM_FLAGS, WC2026_MATCHES, WC2026_KNOCKOUT } from "./worldcupData";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
 import { ref as dbRef, onValue, set as fbSet, update, remove } from "firebase/database";
 
@@ -1104,7 +1104,6 @@ function calcGroupStandings(groupLetter, matches) {
 // ── LLAVES ────────────────────────────────────────────────────────────────────
 function LlavesTab({ matches }) {
   const [activePhase, setActivePhase] = useState(0);
-  const containerRef = useRef(null);
 
   const phases = [
     { key: "r32", label: "Ronda de 32" },
@@ -1129,41 +1128,49 @@ function LlavesTab({ matches }) {
     return `${days[d.getUTCDay()]} ${d.getUTCDate()} ${months[d.getUTCMonth()]} · ${String(d.getUTCHours()).padStart(2,"0")}:${String(d.getUTCMinutes()).padStart(2,"0")} ET`;
   }
 
-  function handlePhaseClick(idx) {
-    setActivePhase(idx);
-    if (containerRef.current) {
-      const col = containerRef.current.children[idx];
-      if (col) col.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
-    }
-  }
+  const currentPhase = phases[activePhase];
+  const nextPhase = phases[activePhase + 1];
+  const currentMatches = getPhaseMatches(currentPhase.key);
+  const nextMatches = nextPhase ? getPhaseMatches(nextPhase.key) : [];
 
-  function handleScroll() {
-    if (!containerRef.current) return;
-    const scrollLeft = containerRef.current.scrollLeft;
-    const width = containerRef.current.offsetWidth;
-    const idx = Math.round(scrollLeft / width);
-    if (idx !== activePhase) setActivePhase(idx);
-  }
-
-  function MatchCard({ m, compact }) {
+  function MatchRow({ m, compact }) {
     const hasResult = m.status === "finished" && m.result;
-    return (
-      <div className={`llaves-match ${compact ? "compact" : ""}`}>
-        {!compact && <div className="llaves-venue">📍 {m.stadium?.split(",")[0] || "—"}</div>}
-        <div className={`llaves-teams ${compact ? "compact-teams" : ""}`}>
-          <div className="llaves-team">
-            <span className={`llaves-flag ${compact ? "small" : ""}`}>{TEAM_FLAGS[m.homeTeam] || "🏳️"}</span>
-            <span className={`llaves-name ${compact ? "small" : ""}`}>{m.homeTeam || "Por definir"}</span>
+    if (compact) {
+      return (
+        <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 10px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, minWidth: 0 }}>
+            <span style={{ fontSize: 12 }}>{TEAM_FLAGS[m.homeTeam] || "🏳️"}</span>
+            <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.homeTeam || "Por definir"}</span>
           </div>
-          <div className="llaves-center">
+          <span style={{ fontSize: 10, color: "var(--text3)", flexShrink: 0, padding: "0 4px" }}>
+            {hasResult ? <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 14, color: "var(--gold)" }}>{m.result.home}-{m.result.away}</span> : "vs"}
+          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, minWidth: 0, justifyContent: "flex-end" }}>
+            <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.awayTeam || "Por definir"}</span>
+            <span style={{ fontSize: 12 }}>{TEAM_FLAGS[m.awayTeam] || "🏳️"}</span>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden", marginBottom: 8 }}>
+        <div style={{ fontSize: 11, color: "var(--text3)", padding: "7px 12px 4px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 4 }}>
+          📍 {m.stadium?.split(",")[0] || "—"} · <span style={{ color: "var(--text3)" }}>{formatDateTime(m.datetime)}</span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", padding: "10px 12px", gap: 8 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <span style={{ fontSize: 18 }}>{TEAM_FLAGS[m.homeTeam] || "🏳️"}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{m.homeTeam || "Por definir"}</span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
             {hasResult
-              ? <span className="llaves-score">{m.result.home}-{m.result.away}</span>
-              : <span className="llaves-time">{compact ? "vs" : formatDateTime(m.datetime)}</span>
+              ? <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: "var(--gold)" }}>{m.result.home}-{m.result.away}</span>
+              : <span style={{ fontSize: 11, color: "var(--text3)", textAlign: "center" }}>vs</span>
             }
           </div>
-          <div className="llaves-team away">
-            <span className={`llaves-flag ${compact ? "small" : ""}`}>{TEAM_FLAGS[m.awayTeam] || "🏳️"}</span>
-            <span className={`llaves-name ${compact ? "small" : ""}`}>{m.awayTeam || "Por definir"}</span>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+            <span style={{ fontSize: 18 }}>{TEAM_FLAGS[m.awayTeam] || "🏳️"}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{m.awayTeam || "Por definir"}</span>
           </div>
         </div>
       </div>
@@ -1172,98 +1179,63 @@ function LlavesTab({ matches }) {
 
   return (
     <div>
+      {/* Fase nav */}
       <div className="llaves-phase-nav">
         {phases.map((p, i) => (
-          <button key={p.key} className={`llaves-phase-btn ${activePhase === i ? "active" : ""}`} onClick={() => handlePhaseClick(i)}>
+          <button key={p.key} className={`llaves-phase-btn ${activePhase === i ? "active" : ""}`} onClick={() => setActivePhase(i)}>
             {p.label}
           </button>
         ))}
       </div>
 
-      <div className="llaves-container" ref={containerRef} onScroll={handleScroll}>
-        {phases.map((phase, phaseIdx) => {
-          const pMatches = getPhaseMatches(phase.key);
-          const nextPhase = phases[phaseIdx + 1];
-          const nextMatches = nextPhase ? getPhaseMatches(nextPhase.key).slice(0, 4) : [];
-          const isActive = phaseIdx === activePhase;
-          const isFinal = phase.key === "final";
+      <div style={{ padding: "12px 14px" }}>
+        {/* Fase actual */}
+        {currentPhase.key === "final" ? (
+          <>
+            {currentMatches.filter(m => m.phase === "final").map(m => (
+              <div key={m.id} style={{ background: "var(--card)", border: "2px solid var(--gold)", borderRadius: 16, padding: 20, textAlign: "center", marginBottom: 12 }}>
+                <div style={{ fontSize: 36, marginBottom: 8 }}>🏆</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                  <div style={{ textAlign: "center", flex: 1 }}>
+                    <div style={{ fontSize: 24 }}>{TEAM_FLAGS[m.homeTeam] || "🏳️"}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--gold)" }}>{m.homeTeam || "Por definir"}</div>
+                  </div>
+                  <div>
+                    {m.status === "finished" && m.result
+                      ? <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 28, color: "var(--gold)" }}>{m.result.home}-{m.result.away}</span>
+                      : <span style={{ fontSize: 12, color: "var(--text3)" }}>vs</span>
+                    }
+                  </div>
+                  <div style={{ textAlign: "center", flex: 1 }}>
+                    <div style={{ fontSize: 24 }}>{TEAM_FLAGS[m.awayTeam] || "🏳️"}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--gold)" }}>{m.awayTeam || "Por definir"}</div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 10 }}>{m.stadium}</div>
+                <div style={{ fontSize: 11, color: "var(--text3)" }}>{formatDateTime(m.datetime)}</div>
+              </div>
+            ))}
+            {currentMatches.filter(m => m.phase === "third").map(m => (
+              <MatchRow key={m.id} m={m} compact={false} />
+            ))}
+          </>
+        ) : (
+          <>
+            {currentMatches.map(m => <MatchRow key={m.id} m={m} compact={false} />)}
 
-          return (
-            <div key={phase.key} className={`llaves-phase-col ${isActive ? "active-phase" : ""}`}>
-              {isFinal ? (
-                <>
-                  {pMatches.filter(m => m.phase === "final").map(m => (
-                    <div key={m.id} className="llaves-final-card">
-                      <div className="llaves-trophy">🏆</div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                        <div style={{ textAlign: "center", flex: 1 }}>
-                          <div style={{ fontSize: 20 }}>{TEAM_FLAGS[m.homeTeam] || "🏳️"}</div>
-                          <div className="llaves-finalist">{m.homeTeam || "Por definir"}</div>
-                        </div>
-                        <div style={{ fontSize: 11, color: "var(--text3)" }}>
-                          {m.status === "finished" && m.result
-                            ? <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 24, color: "var(--gold)" }}>{m.result.home}-{m.result.away}</span>
-                            : <span>vs</span>
-                          }
-                        </div>
-                        <div style={{ textAlign: "center", flex: 1 }}>
-                          <div style={{ fontSize: 20 }}>{TEAM_FLAGS[m.awayTeam] || "🏳️"}</div>
-                          <div className="llaves-finalist">{m.awayTeam || "Por definir"}</div>
-                        </div>
-                      </div>
-                      <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 8 }}>{m.stadium}</div>
-                      <div style={{ fontSize: 11, color: "var(--text3)" }}>{formatDateTime(m.datetime)}</div>
-                    </div>
-                  ))}
-                  {pMatches.filter(m => m.phase === "third").map(m => (
-                    <div key={m.id} className="llaves-match" style={{ borderColor: "var(--gold-dim)" }}>
-                      <div className="llaves-venue">🥉 Tercer puesto · {m.stadium?.split(",")[0]}</div>
-                      <div className="llaves-teams">
-                        <div className="llaves-team">
-                          <span className="llaves-flag">{TEAM_FLAGS[m.homeTeam] || "🏳️"}</span>
-                          <span className="llaves-name">{m.homeTeam || "Por definir"}</span>
-                        </div>
-                        <div className="llaves-center">
-                          {m.status === "finished" && m.result
-                            ? <span className="llaves-score">{m.result.home}-{m.result.away}</span>
-                            : <span className="llaves-time">{formatDateTime(m.datetime)}</span>
-                          }
-                        </div>
-                        <div className="llaves-team away">
-                          <span className="llaves-flag">{TEAM_FLAGS[m.awayTeam] || "🏳️"}</span>
-                          <span className="llaves-name">{m.awayTeam || "Por definir"}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </>
-              ) : (
-                <>
-                  {pMatches.map((m, i) => (
-                    <div key={m.id}>
-                      <MatchCard m={m} compact={!isActive} />
-                      {!isActive && i < pMatches.length - 1 && (
-                        <div className="llaves-connector"><div className="llaves-connector-line" /></div>
-                      )}
-                    </div>
-                  ))}
-                  {nextMatches.length > 0 && isActive && (
-                    <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
-                      <div style={{ fontSize: 10, color: "var(--text3)", marginBottom: 6, textAlign: "center" }}>
-                        {nextPhase?.label} →
-                      </div>
-                      {nextMatches.map(m => (
-                        <div key={m.id} style={{ marginBottom: 4 }}>
-                          <MatchCard m={m} compact={true} />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          );
-        })}
+            {/* Siguiente fase comprimida */}
+            {nextMatches.length > 0 && (
+              <div style={{ marginTop: 16, borderTop: "1px dashed var(--border)", paddingTop: 12 }}>
+                <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 8, textAlign: "center", fontWeight: 600 }}>
+                  {nextPhase.label} →
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {nextMatches.map(m => <MatchRow key={m.id} m={m} compact={true} />)}
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
@@ -1829,6 +1801,15 @@ export default function App() {
     showNotif(`✅ ${added} partidos cargados`);
   }
 
+  function loadKnockoutMatches() {
+    const existing = Object.values(matches);
+    let added = 0;
+    WC2026_KNOCKOUT.forEach(m => {
+      if (!existing.find(e => e.id === m.id)) { fbSet(dbRef(db, `${tPath("matches")}/${m.id}`), m); added++; }
+    });
+    showNotif(`✅ ${added} partidos eliminatorios cargados`);
+  }
+
   function loadFriendlyMatches() {
     const AMISTOSOS = [
       { id: "ami001", homeTeam: "Bélgica",  awayTeam: "Túnez",     datetime: "2026-06-06T13:00:00Z", phase: "test", status: "upcoming", result: null },
@@ -1977,9 +1958,8 @@ export default function App() {
 
   const standings = sortStandings(standingsBase, standTab);
 
-  const isKnockoutPhase = (phase) => ["r32", "r16", "qf", "sf", "final"].includes(phase);
-  const upcomingMatches = Object.values(matches).filter(m => m.status !== "finished" && (m.enabled || m.phase === "test" || isKnockoutPhase(m.phase) || isAdmin)).sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
-  const finishedMatches = Object.values(matches).filter(m => m.status === "finished" && (m.enabled || m.phase === "test" || isKnockoutPhase(m.phase) || isAdmin)).sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
+  const upcomingMatches = Object.values(matches).filter(m => m.status !== "finished" && (m.enabled || m.phase === "test" || isAdmin)).sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+  const finishedMatches = Object.values(matches).filter(m => m.status === "finished" && (m.enabled || m.phase === "test" || isAdmin)).sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
 
   const tournamentList = Object.values(tournaments).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
@@ -2471,7 +2451,10 @@ export default function App() {
                       <button className="btn btn-primary btn-full" onClick={addMatch}>⚽ Agregar partido</button>
                     </div>
                     {activeTournament?.type === "worldcup" && (
-                      <button className="btn btn-gold btn-full" style={{ marginBottom: 12 }} onClick={loadWorldCupMatches}>🌍 Cargar partidos Mundial 2026</button>
+                      <>
+                        <button className="btn btn-gold btn-full" style={{ marginBottom: 12 }} onClick={loadWorldCupMatches}>🌍 Cargar partidos Mundial 2026</button>
+                        <button className="btn btn-gold btn-full" style={{ marginBottom: 12 }} onClick={loadKnockoutMatches}>⚔️ Cargar partidos eliminatorios</button>
+                      </>
                     )}
                     <button className="btn btn-secondary btn-full" style={{ marginBottom: 12 }} onClick={loadFriendlyMatches}>🧪 Cargar amistosos de prueba</button>
                     <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
