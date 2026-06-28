@@ -443,7 +443,7 @@ const css = `
   .countdown-icon { font-size: 20px; }
 
   /* LLAVES */
-  .llaves-phase-nav { display: flex; gap: 6px; overflow-x: auto; padding: 10px 14px; background: var(--bg2); border-bottom: 1px solid var(--border); position: sticky; top: 108px; z-index: 90; scrollbar-width: none; }
+  .llaves-phase-nav { display: flex; gap: 6px; overflow-x: auto; padding: 10px 14px; background: var(--bg2); border-bottom: 1px solid var(--border); position: sticky; top: 56px; z-index: 90; scrollbar-width: none; }
   .llaves-phase-nav::-webkit-scrollbar { display: none; }
   .llaves-phase-btn { flex-shrink: 0; padding: 6px 14px; border-radius: 20px; border: 1.5px solid var(--border); background: none; color: var(--text2); font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
   .llaves-phase-btn.active { background: var(--green-dark); border-color: var(--green); color: white; }
@@ -1123,9 +1123,12 @@ function LlavesTab({ matches }) {
   function formatDateTime(dt) {
     if (!dt) return "";
     const d = new Date(dt);
+    // Convertir UTC a ET (UTC-4)
+    const etOffset = -4 * 60;
+    const etDate = new Date(d.getTime() + etOffset * 60000);
     const days = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
     const months = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
-    return `${days[d.getUTCDay()]} ${d.getUTCDate()} ${months[d.getUTCMonth()]} · ${String(d.getUTCHours()).padStart(2,"0")}:${String(d.getUTCMinutes()).padStart(2,"0")} ET`;
+    return `${days[etDate.getUTCDay()]} ${etDate.getUTCDate()} ${months[etDate.getUTCMonth()]} · ${String(etDate.getUTCHours()).padStart(2,"0")}:${String(etDate.getUTCMinutes()).padStart(2,"0")} ET`;
   }
 
   const currentPhase = phases[activePhase];
