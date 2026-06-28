@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { db, auth } from "./firebase";
-import { TEAM_FLAGS, WC2026_MATCHES, WC2026_KNOCKOUT } from "./worldcupData";
+import { TEAM_FLAGS, WC2026_MATCHES } from "./worldcupData";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
 import { ref as dbRef, onValue, set as fbSet, update, remove } from "firebase/database";
 
@@ -441,6 +441,37 @@ const css = `
   .countdown-label { font-size: 11px; color: rgba(255,255,255,0.8); letter-spacing: 1px; text-align: center; line-height: 1.3; }
   .countdown-banner.match-day .countdown-label { color: var(--green-deep); font-weight: 700; }
   .countdown-icon { font-size: 20px; }
+
+  /* LLAVES */
+  .llaves-phase-nav { display: flex; gap: 6px; overflow-x: auto; padding: 10px 14px; background: var(--bg2); border-bottom: 1px solid var(--border); position: sticky; top: 120px; z-index: 90; scrollbar-width: none; }
+  .llaves-phase-nav::-webkit-scrollbar { display: none; }
+  .llaves-phase-btn { flex-shrink: 0; padding: 6px 14px; border-radius: 20px; border: 1.5px solid var(--border); background: none; color: var(--text2); font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+  .llaves-phase-btn.active { background: var(--green-dark); border-color: var(--green); color: white; }
+  .llaves-container { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .llaves-container::-webkit-scrollbar { display: none; }
+  .llaves-phase-col { min-width: 65vw; max-width: 65vw; scroll-snap-align: start; padding: 10px 8px; display: flex; flex-direction: column; gap: 8px; }
+  .llaves-phase-col.active-phase { min-width: 100vw; max-width: 100vw; padding: 10px 14px; }
+  .llaves-match { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: all 0.3s; }
+  .llaves-match.compact { border-radius: 8px; }
+  .llaves-venue { font-size: 10px; color: var(--text3); padding: 6px 10px 3px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 3px; }
+  .llaves-venue.hidden { display: none; }
+  .llaves-teams { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 8px 10px; gap: 6px; }
+  .llaves-teams.compact-teams { padding: 5px 8px; }
+  .llaves-team { display: flex; flex-direction: column; gap: 1px; }
+  .llaves-team.away { align-items: flex-end; }
+  .llaves-flag { font-size: 16px; }
+  .llaves-flag.small { font-size: 12px; }
+  .llaves-name { font-size: 12px; font-weight: 600; color: var(--text); }
+  .llaves-name.small { font-size: 10px; }
+  .llaves-center { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+  .llaves-score { font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: var(--gold); }
+  .llaves-time { font-size: 10px; color: var(--text3); text-align: center; }
+  .llaves-connector { display: flex; justify-content: center; }
+  .llaves-connector-line { width: 1px; height: 12px; background: var(--border); }
+  .llaves-final-card { background: var(--card); border: 2px solid var(--gold); border-radius: 16px; padding: 20px; text-align: center; margin: 8px 0; }
+  .llaves-trophy { font-size: 40px; margin-bottom: 8px; }
+  .llaves-vs { font-size: 13px; color: var(--text3); margin: 8px 0; }
+  .llaves-finalist { font-size: 14px; font-weight: 700; color: var(--gold); }
 
   /* TOURNAMENT CARD */
   .tournament-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; }
@@ -1070,6 +1101,174 @@ function calcGroupStandings(groupLetter, matches) {
   return Object.values(teams).sort((a, b) => b.pts - a.pts || (b.gf - b.gc) - (a.gf - a.gc) || b.gf - a.gf);
 }
 
+// ── LLAVES ────────────────────────────────────────────────────────────────────
+function LlavesTab({ matches }) {
+  const [activePhase, setActivePhase] = useState(0);
+  const containerRef = useRef(null);
+
+  const phases = [
+    { key: "r32", label: "Ronda de 32" },
+    { key: "r16", label: "Octavos" },
+    { key: "qf", label: "Cuartos" },
+    { key: "sf", label: "Semis" },
+    { key: "final", label: "Final" },
+  ];
+
+  const matchList = Object.values(matches || {}).filter(m => m.phase !== "groups" && m.phase !== "test");
+
+  function getPhaseMatches(phaseKey) {
+    if (phaseKey === "final") return matchList.filter(m => m.phase === "final" || m.phase === "third").sort((a, b) => (a.phase === "final" ? -1 : 1));
+    return matchList.filter(m => m.phase === phaseKey).sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+  }
+
+  function formatDateTime(dt) {
+    if (!dt) return "";
+    const d = new Date(dt);
+    const days = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
+    const months = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+    return `${days[d.getUTCDay()]} ${d.getUTCDate()} ${months[d.getUTCMonth()]} · ${String(d.getUTCHours()).padStart(2,"0")}:${String(d.getUTCMinutes()).padStart(2,"0")} ET`;
+  }
+
+  function handlePhaseClick(idx) {
+    setActivePhase(idx);
+    if (containerRef.current) {
+      const col = containerRef.current.children[idx];
+      if (col) col.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+    }
+  }
+
+  function handleScroll() {
+    if (!containerRef.current) return;
+    const scrollLeft = containerRef.current.scrollLeft;
+    const width = containerRef.current.offsetWidth;
+    const idx = Math.round(scrollLeft / width);
+    if (idx !== activePhase) setActivePhase(idx);
+  }
+
+  function MatchCard({ m, compact }) {
+    const hasResult = m.status === "finished" && m.result;
+    return (
+      <div className={`llaves-match ${compact ? "compact" : ""}`}>
+        {!compact && <div className="llaves-venue">📍 {m.stadium?.split(",")[0] || "—"}</div>}
+        <div className={`llaves-teams ${compact ? "compact-teams" : ""}`}>
+          <div className="llaves-team">
+            <span className={`llaves-flag ${compact ? "small" : ""}`}>{TEAM_FLAGS[m.homeTeam] || "🏳️"}</span>
+            <span className={`llaves-name ${compact ? "small" : ""}`}>{m.homeTeam || "Por definir"}</span>
+          </div>
+          <div className="llaves-center">
+            {hasResult
+              ? <span className="llaves-score">{m.result.home}-{m.result.away}</span>
+              : <span className="llaves-time">{compact ? "vs" : formatDateTime(m.datetime)}</span>
+            }
+          </div>
+          <div className="llaves-team away">
+            <span className={`llaves-flag ${compact ? "small" : ""}`}>{TEAM_FLAGS[m.awayTeam] || "🏳️"}</span>
+            <span className={`llaves-name ${compact ? "small" : ""}`}>{m.awayTeam || "Por definir"}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="llaves-phase-nav">
+        {phases.map((p, i) => (
+          <button key={p.key} className={`llaves-phase-btn ${activePhase === i ? "active" : ""}`} onClick={() => handlePhaseClick(i)}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="llaves-container" ref={containerRef} onScroll={handleScroll}>
+        {phases.map((phase, phaseIdx) => {
+          const pMatches = getPhaseMatches(phase.key);
+          const nextPhase = phases[phaseIdx + 1];
+          const nextMatches = nextPhase ? getPhaseMatches(nextPhase.key).slice(0, 4) : [];
+          const isActive = phaseIdx === activePhase;
+          const isFinal = phase.key === "final";
+
+          return (
+            <div key={phase.key} className={`llaves-phase-col ${isActive ? "active-phase" : ""}`}>
+              {isFinal ? (
+                <>
+                  {pMatches.filter(m => m.phase === "final").map(m => (
+                    <div key={m.id} className="llaves-final-card">
+                      <div className="llaves-trophy">🏆</div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                        <div style={{ textAlign: "center", flex: 1 }}>
+                          <div style={{ fontSize: 20 }}>{TEAM_FLAGS[m.homeTeam] || "🏳️"}</div>
+                          <div className="llaves-finalist">{m.homeTeam || "Por definir"}</div>
+                        </div>
+                        <div style={{ fontSize: 11, color: "var(--text3)" }}>
+                          {m.status === "finished" && m.result
+                            ? <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 24, color: "var(--gold)" }}>{m.result.home}-{m.result.away}</span>
+                            : <span>vs</span>
+                          }
+                        </div>
+                        <div style={{ textAlign: "center", flex: 1 }}>
+                          <div style={{ fontSize: 20 }}>{TEAM_FLAGS[m.awayTeam] || "🏳️"}</div>
+                          <div className="llaves-finalist">{m.awayTeam || "Por definir"}</div>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 8 }}>{m.stadium}</div>
+                      <div style={{ fontSize: 11, color: "var(--text3)" }}>{formatDateTime(m.datetime)}</div>
+                    </div>
+                  ))}
+                  {pMatches.filter(m => m.phase === "third").map(m => (
+                    <div key={m.id} className="llaves-match" style={{ borderColor: "var(--gold-dim)" }}>
+                      <div className="llaves-venue">🥉 Tercer puesto · {m.stadium?.split(",")[0]}</div>
+                      <div className="llaves-teams">
+                        <div className="llaves-team">
+                          <span className="llaves-flag">{TEAM_FLAGS[m.homeTeam] || "🏳️"}</span>
+                          <span className="llaves-name">{m.homeTeam || "Por definir"}</span>
+                        </div>
+                        <div className="llaves-center">
+                          {m.status === "finished" && m.result
+                            ? <span className="llaves-score">{m.result.home}-{m.result.away}</span>
+                            : <span className="llaves-time">{formatDateTime(m.datetime)}</span>
+                          }
+                        </div>
+                        <div className="llaves-team away">
+                          <span className="llaves-flag">{TEAM_FLAGS[m.awayTeam] || "🏳️"}</span>
+                          <span className="llaves-name">{m.awayTeam || "Por definir"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <>
+                  {pMatches.map((m, i) => (
+                    <div key={m.id}>
+                      <MatchCard m={m} compact={!isActive} />
+                      {!isActive && i < pMatches.length - 1 && (
+                        <div className="llaves-connector"><div className="llaves-connector-line" /></div>
+                      )}
+                    </div>
+                  ))}
+                  {nextMatches.length > 0 && isActive && (
+                    <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
+                      <div style={{ fontSize: 10, color: "var(--text3)", marginBottom: 6, textAlign: "center" }}>
+                        {nextPhase?.label} →
+                      </div>
+                      {nextMatches.map(m => (
+                        <div key={m.id} style={{ marginBottom: 4 }}>
+                          <MatchCard m={m} compact={true} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── TEAM SEARCH ───────────────────────────────────────────────────────────────
 function TeamSearch({ matches }) {
   const [query, setQuery] = useState("");
@@ -1630,15 +1829,6 @@ export default function App() {
     showNotif(`✅ ${added} partidos cargados`);
   }
 
-  function loadKnockoutMatches() {
-    const existing = Object.values(matches);
-    let added = 0;
-    WC2026_KNOCKOUT.forEach(m => {
-      if (!existing.find(e => e.id === m.id)) { fbSet(dbRef(db, `${tPath("matches")}/${m.id}`), m); added++; }
-    });
-    showNotif(`✅ ${added} partidos eliminatorios cargados`);
-  }
-
   function loadFriendlyMatches() {
     const AMISTOSOS = [
       { id: "ami001", homeTeam: "Bélgica",  awayTeam: "Túnez",     datetime: "2026-06-06T13:00:00Z", phase: "test", status: "upcoming", result: null },
@@ -1787,8 +1977,9 @@ export default function App() {
 
   const standings = sortStandings(standingsBase, standTab);
 
-  const upcomingMatches = Object.values(matches).filter(m => m.status !== "finished" && (m.enabled || m.phase === "test" || isAdmin)).sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
-  const finishedMatches = Object.values(matches).filter(m => m.status === "finished" && (m.enabled || m.phase === "test" || isAdmin)).sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
+  const isKnockoutPhase = (phase) => ["r32", "r16", "qf", "sf", "final"].includes(phase);
+  const upcomingMatches = Object.values(matches).filter(m => m.status !== "finished" && (m.enabled || m.phase === "test" || isKnockoutPhase(m.phase) || isAdmin)).sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+  const finishedMatches = Object.values(matches).filter(m => m.status === "finished" && (m.enabled || m.phase === "test" || isKnockoutPhase(m.phase) || isAdmin)).sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
 
   const tournamentList = Object.values(tournaments).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
@@ -1936,6 +2127,11 @@ export default function App() {
                     : finishedMatches.map(m => <MatchCard key={m.id} match={m} myPred={predictions[m.id]?.[currentUser?.id]} allPreds={predictions[m.id] || {}} onSave={savePrediction} isAdmin={isAdmin} isAdminPlayer={isAdminPlayer} onSetResult={setResult} participants={participants} scoring={scoring} />)
                 )}
               </div>
+            )}
+
+            {/* LLAVES */}
+            {activeTab === "llaves" && (
+              <LlavesTab matches={matches} />
             )}
 
             {/* GROUPS */}
@@ -2275,10 +2471,7 @@ export default function App() {
                       <button className="btn btn-primary btn-full" onClick={addMatch}>⚽ Agregar partido</button>
                     </div>
                     {activeTournament?.type === "worldcup" && (
-                      <>
-                        <button className="btn btn-gold btn-full" style={{ marginBottom: 12 }} onClick={loadWorldCupMatches}>🌍 Cargar partidos Mundial 2026</button>
-                        <button className="btn btn-gold btn-full" style={{ marginBottom: 12 }} onClick={loadKnockoutMatches}>⚔️ Cargar partidos eliminatorios</button>
-                      </>
+                      <button className="btn btn-gold btn-full" style={{ marginBottom: 12 }} onClick={loadWorldCupMatches}>🌍 Cargar partidos Mundial 2026</button>
                     )}
                     <button className="btn btn-secondary btn-full" style={{ marginBottom: 12 }} onClick={loadFriendlyMatches}>🧪 Cargar amistosos de prueba</button>
                     <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
@@ -2355,6 +2548,7 @@ export default function App() {
           <nav className="nav">
             <button className={`nav-btn ${activeTab === "predictions" ? "active" : ""}`} onClick={() => setActiveTab("predictions")}><span className="icon">⚽</span>Partidos</button>
             <button className={`nav-btn ${activeTab === "groups" ? "active" : ""}`} onClick={() => setActiveTab("groups")}><span className="icon">📊</span>Grupos</button>
+            <button className={`nav-btn ${activeTab === "llaves" ? "active" : ""}`} onClick={() => setActiveTab("llaves")}><span className="icon">🔑</span>Llaves</button>
             <button className={`nav-btn ${activeTab === "standings" ? "active" : ""}`} onClick={() => setActiveTab("standings")}><span className="icon">🏆</span>Escalafón</button>
             {isAdmin && <button className={`nav-btn ${activeTab === "payments" ? "active" : ""}`} onClick={() => setActiveTab("payments")}><span className="icon">💰</span>Pagos</button>}
             {isAdmin && <button className={`nav-btn ${activeTab === "admin" ? "active" : ""}`} onClick={() => setActiveTab("admin")}><span className="icon">⚙️</span>Admin</button>}
