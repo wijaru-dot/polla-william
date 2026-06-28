@@ -443,7 +443,7 @@ const css = `
   .countdown-icon { font-size: 20px; }
 
   /* LLAVES */
-  .llaves-phase-nav { display: flex; gap: 6px; overflow-x: auto; padding: 10px 14px; background: var(--bg2); border-bottom: 1px solid var(--border); position: sticky; top: 114px; z-index: 98; scrollbar-width: none; }
+  .llaves-phase-nav { display: flex; gap: 6px; overflow-x: auto; padding: 10px 14px; background: var(--bg2); border-bottom: 1px solid var(--border); position: sticky; top: 64px; z-index: 98; scrollbar-width: none; }
   .llaves-phase-nav::-webkit-scrollbar { display: none; }
   .llaves-phase-btn { flex-shrink: 0; padding: 6px 14px; border-radius: 20px; border: 1.5px solid var(--border); background: none; color: var(--text2); font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
   .llaves-phase-btn.active { background: var(--green-dark); border-color: var(--green); color: white; }
@@ -2079,7 +2079,7 @@ export default function App() {
           )}
 
           {/* COUNTDOWN BANNER */}
-          <CountdownBanner />
+          {activeTab !== "llaves" && <CountdownBanner />}
 
           <div className="content" style={activeTab === "llaves" ? { padding: 0 } : {}}>
 
