@@ -185,28 +185,28 @@ export const WC2026_KNOCKOUT = [
   { id: "m088", homeTeam: "Colombia", awayTeam: "Ghana", datetime: "2026-07-04T01:30:00Z", phase: "r32", stadium: "Arrowhead Stadium, Kansas City", enabled: false, status: "upcoming", matchNumber: 88, nextMatch: "m095" },
 
   // ── OCTAVOS DE FINAL ─────────────────────────────────
-  { id: "m089", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-05T17:00:00Z", phase: "r16", stadium: "NRG Stadium, Houston", enabled: true, status: "upcoming", matchNumber: 89, nextMatch: "m097", slot1: "m073", slot2: "m075" },
-  { id: "m090", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-05T21:00:00Z", phase: "r16", stadium: "Lincoln Financial Field, Filadelfia", enabled: true, status: "upcoming", matchNumber: 90, nextMatch: "m097", slot1: "m074", slot2: "m077" },
-  { id: "m091", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-06T17:00:00Z", phase: "r16", stadium: "MetLife Stadium, Nueva York", enabled: true, status: "upcoming", matchNumber: 91, nextMatch: "m098", slot1: "m076", slot2: "m078" },
-  { id: "m092", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-07T01:00:00Z", phase: "r16", stadium: "Estadio Azteca, Ciudad de México", enabled: true, status: "upcoming", matchNumber: 92, nextMatch: "m098", slot1: "m079", slot2: "m083" },
-  { id: "m093", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-06T20:00:00Z", phase: "r16", stadium: "Lumen Field, Seattle", enabled: true, status: "upcoming", matchNumber: 93, nextMatch: "m099", slot1: "m080", slot2: "m081" },
-  { id: "m094", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-05T23:00:00Z", phase: "r16", stadium: "AT&T Stadium, Dallas", enabled: true, status: "upcoming", matchNumber: 94, nextMatch: "m099", slot1: "m082", slot2: "m084" },
-  { id: "m095", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-07T19:00:00Z", phase: "r16", stadium: "BC Place, Vancouver", enabled: true, status: "upcoming", matchNumber: 95, nextMatch: "m100", slot1: "m085", slot2: "m088" },
-  { id: "m096", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-06T22:00:00Z", phase: "r16", stadium: "Mercedes-Benz Stadium, Atlanta", enabled: true, status: "upcoming", matchNumber: 96, nextMatch: "m100", slot1: "m086", slot2: "m087" },
+  { id: "m089", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-05T17:00:00Z", phase: "r16", stadium: "NRG Stadium, Houston", enabled: false, status: "upcoming", matchNumber: 89, nextMatch: "m097", slot1: "m073", slot2: "m075" },
+  { id: "m090", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-05T21:00:00Z", phase: "r16", stadium: "Lincoln Financial Field, Filadelfia", enabled: false, status: "upcoming", matchNumber: 90, nextMatch: "m097", slot1: "m074", slot2: "m077" },
+  { id: "m091", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-06T17:00:00Z", phase: "r16", stadium: "MetLife Stadium, Nueva York", enabled: false, status: "upcoming", matchNumber: 91, nextMatch: "m098", slot1: "m076", slot2: "m078" },
+  { id: "m092", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-07T01:00:00Z", phase: "r16", stadium: "Estadio Azteca, Ciudad de México", enabled: false, status: "upcoming", matchNumber: 92, nextMatch: "m098", slot1: "m079", slot2: "m083" },
+  { id: "m093", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-06T20:00:00Z", phase: "r16", stadium: "Lumen Field, Seattle", enabled: false, status: "upcoming", matchNumber: 93, nextMatch: "m099", slot1: "m080", slot2: "m081" },
+  { id: "m094", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-05T23:00:00Z", phase: "r16", stadium: "AT&T Stadium, Dallas", enabled: false, status: "upcoming", matchNumber: 94, nextMatch: "m099", slot1: "m082", slot2: "m084" },
+  { id: "m095", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-07T19:00:00Z", phase: "r16", stadium: "BC Place, Vancouver", enabled: false, status: "upcoming", matchNumber: 95, nextMatch: "m100", slot1: "m085", slot2: "m088" },
+  { id: "m096", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-06T22:00:00Z", phase: "r16", stadium: "Mercedes-Benz Stadium, Atlanta", enabled: false, status: "upcoming", matchNumber: 96, nextMatch: "m100", slot1: "m086", slot2: "m087" },
 
   // ── CUARTOS DE FINAL ─────────────────────────────────
-  { id: "m097", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-10T20:00:00Z", phase: "qf", stadium: "Gillette Stadium, Boston", enabled: true, status: "upcoming", matchNumber: 97, nextMatch: "m101", slot1: "m089", slot2: "m090" },
-  { id: "m098", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-11T00:00:00Z", phase: "qf", stadium: "SoFi Stadium, Los Ángeles", enabled: true, status: "upcoming", matchNumber: 98, nextMatch: "m101", slot1: "m091", slot2: "m092" },
-  { id: "m099", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-11T20:00:00Z", phase: "qf", stadium: "Hard Rock Stadium, Miami", enabled: true, status: "upcoming", matchNumber: 99, nextMatch: "m102", slot1: "m093", slot2: "m094" },
-  { id: "m100", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-12T00:00:00Z", phase: "qf", stadium: "Arrowhead Stadium, Kansas City", enabled: true, status: "upcoming", matchNumber: 100, nextMatch: "m102", slot1: "m095", slot2: "m096" },
+  { id: "m097", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-10T20:00:00Z", phase: "qf", stadium: "Gillette Stadium, Boston", enabled: false, status: "upcoming", matchNumber: 97, nextMatch: "m101", slot1: "m089", slot2: "m090" },
+  { id: "m098", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-11T00:00:00Z", phase: "qf", stadium: "SoFi Stadium, Los Ángeles", enabled: false, status: "upcoming", matchNumber: 98, nextMatch: "m101", slot1: "m091", slot2: "m092" },
+  { id: "m099", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-11T20:00:00Z", phase: "qf", stadium: "Hard Rock Stadium, Miami", enabled: false, status: "upcoming", matchNumber: 99, nextMatch: "m102", slot1: "m093", slot2: "m094" },
+  { id: "m100", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-12T00:00:00Z", phase: "qf", stadium: "Arrowhead Stadium, Kansas City", enabled: false, status: "upcoming", matchNumber: 100, nextMatch: "m102", slot1: "m095", slot2: "m096" },
 
   // ── SEMIFINALES ──────────────────────────────────────
-  { id: "m101", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-14T23:00:00Z", phase: "sf", stadium: "AT&T Stadium, Dallas", enabled: true, status: "upcoming", matchNumber: 101, nextMatch: "m104", slot1: "m097", slot2: "m098" },
-  { id: "m102", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-15T23:00:00Z", phase: "sf", stadium: "Mercedes-Benz Stadium, Atlanta", enabled: true, status: "upcoming", matchNumber: 102, nextMatch: "m104", slot1: "m099", slot2: "m100" },
+  { id: "m101", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-14T23:00:00Z", phase: "sf", stadium: "AT&T Stadium, Dallas", enabled: false, status: "upcoming", matchNumber: 101, nextMatch: "m104", slot1: "m097", slot2: "m098" },
+  { id: "m102", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-15T23:00:00Z", phase: "sf", stadium: "Mercedes-Benz Stadium, Atlanta", enabled: false, status: "upcoming", matchNumber: 102, nextMatch: "m104", slot1: "m099", slot2: "m100" },
 
   // ── TERCER PUESTO ────────────────────────────────────
-  { id: "m103", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-18T21:00:00Z", phase: "third", stadium: "Hard Rock Stadium, Miami", enabled: true, status: "upcoming", matchNumber: 103, slot1: "m101_loser", slot2: "m102_loser" },
+  { id: "m103", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-18T21:00:00Z", phase: "third", stadium: "Hard Rock Stadium, Miami", enabled: false, status: "upcoming", matchNumber: 103, slot1: "m101_loser", slot2: "m102_loser" },
 
   // ── FINAL ────────────────────────────────────────────
-  { id: "m104", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-19T19:00:00Z", phase: "final", stadium: "MetLife Stadium, Nueva York", enabled: true, status: "upcoming", matchNumber: 104, slot1: "m101", slot2: "m102" },
+  { id: "m104", homeTeam: "Por definir", awayTeam: "Por definir", datetime: "2026-07-19T19:00:00Z", phase: "final", stadium: "MetLife Stadium, Nueva York", enabled: false, status: "upcoming", matchNumber: 104, slot1: "m101", slot2: "m102" },
 ];
