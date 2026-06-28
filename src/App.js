@@ -1778,7 +1778,6 @@ export default function App() {
 
   const standings = sortStandings(standingsBase, standTab);
 
-  const isKnockoutPhase = (phase) => ["r32", "r16", "qf", "sf", "final"].includes(phase);
   const upcomingMatches = Object.values(matches).filter(m => m.status !== "finished" && (m.enabled || m.phase === "test" || isAdmin)).sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
   const finishedMatches = Object.values(matches).filter(m => m.status === "finished" && (m.enabled || m.phase === "test" || isAdmin)).sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
 
