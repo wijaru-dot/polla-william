@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { db, auth } from "./firebase";
-import { TEAM_FLAGS, WC2026_MATCHES } from "./worldcupData";
+import { TEAM_FLAGS, WC2026_MATCHES, WC2026_KNOCKOUT } from "./worldcupData";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
 import { ref as dbRef, onValue, set as fbSet, update, remove } from "firebase/database";
 
@@ -1630,6 +1630,15 @@ export default function App() {
     showNotif(`✅ ${added} partidos cargados`);
   }
 
+  function loadKnockoutMatches() {
+    const existing = Object.values(matches);
+    let added = 0;
+    WC2026_KNOCKOUT.forEach(m => {
+      if (!existing.find(e => e.id === m.id)) { fbSet(dbRef(db, `${tPath("matches")}/${m.id}`), m); added++; }
+    });
+    showNotif(`✅ ${added} partidos eliminatorios cargados`);
+  }
+
   function loadFriendlyMatches() {
     const AMISTOSOS = [
       { id: "ami001", homeTeam: "Bélgica",  awayTeam: "Túnez",     datetime: "2026-06-06T13:00:00Z", phase: "test", status: "upcoming", result: null },
@@ -2266,7 +2275,10 @@ export default function App() {
                       <button className="btn btn-primary btn-full" onClick={addMatch}>⚽ Agregar partido</button>
                     </div>
                     {activeTournament?.type === "worldcup" && (
-                      <button className="btn btn-gold btn-full" style={{ marginBottom: 12 }} onClick={loadWorldCupMatches}>🌍 Cargar partidos Mundial 2026</button>
+                      <>
+                        <button className="btn btn-gold btn-full" style={{ marginBottom: 12 }} onClick={loadWorldCupMatches}>🌍 Cargar partidos Mundial 2026</button>
+                        <button className="btn btn-gold btn-full" style={{ marginBottom: 12 }} onClick={loadKnockoutMatches}>⚔️ Cargar partidos eliminatorios</button>
+                      </>
                     )}
                     <button className="btn btn-secondary btn-full" style={{ marginBottom: 12 }} onClick={loadFriendlyMatches}>🧪 Cargar amistosos de prueba</button>
                     <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
