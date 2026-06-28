@@ -2081,7 +2081,7 @@ export default function App() {
           {/* COUNTDOWN BANNER */}
           <CountdownBanner />
 
-          <div className="content">
+          <div className="content" style={activeTab === "llaves" ? { padding: 0 } : {}}>
 
             {/* PREDICTIONS */}
             {activeTab === "predictions" && (
