@@ -443,7 +443,7 @@ const css = `
   .countdown-icon { font-size: 20px; }
 
   /* LLAVES */
-  .llaves-phase-nav { display: flex; gap: 6px; overflow-x: auto; padding: 10px 14px; background: var(--bg2); border-bottom: 1px solid var(--border); position: sticky; top: 120px; z-index: 90; scrollbar-width: none; }
+  .llaves-phase-nav { display: flex; gap: 6px; overflow-x: auto; padding: 10px 14px; background: var(--bg2); border-bottom: 1px solid var(--border); position: sticky; top: 108px; z-index: 90; scrollbar-width: none; }
   .llaves-phase-nav::-webkit-scrollbar { display: none; }
   .llaves-phase-btn { flex-shrink: 0; padding: 6px 14px; border-radius: 20px; border: 1.5px solid var(--border); background: none; color: var(--text2); font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
   .llaves-phase-btn.active { background: var(--green-dark); border-color: var(--green); color: white; }
@@ -1117,7 +1117,7 @@ function LlavesTab({ matches }) {
 
   function getPhaseMatches(phaseKey) {
     if (phaseKey === "final") return matchList.filter(m => m.phase === "final" || m.phase === "third").sort((a, b) => (a.phase === "final" ? -1 : 1));
-    return matchList.filter(m => m.phase === phaseKey).sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+    return matchList.filter(m => m.phase === phaseKey).sort((a, b) => (a.matchNumber || 0) - (b.matchNumber || 0));
   }
 
   function formatDateTime(dt) {
