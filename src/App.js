@@ -443,7 +443,7 @@ const css = `
   .countdown-icon { font-size: 20px; }
 
   /* LLAVES */
-  .llaves-phase-nav { display: flex; gap: 6px; overflow-x: auto; padding: 10px 14px; background: var(--bg2); border-bottom: 1px solid var(--border); position: sticky; top: 64px; z-index: 98; scrollbar-width: none; }
+  .llaves-phase-nav { display: flex; gap: 6px; overflow-x: auto; padding: 10px 14px; background: var(--bg2); border-bottom: 1px solid var(--border); scrollbar-width: none; }
   .llaves-phase-nav::-webkit-scrollbar { display: none; }
   .llaves-phase-btn { flex-shrink: 0; padding: 6px 14px; border-radius: 20px; border: 1.5px solid var(--border); background: none; color: var(--text2); font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
   .llaves-phase-btn.active { background: var(--green-dark); border-color: var(--green); color: white; }
@@ -1181,7 +1181,7 @@ function LlavesTab({ matches }) {
   }
 
   return (
-    <div>
+    <div style={{ background: "var(--bg)", minHeight: "100%" }}>
       {/* Fase nav */}
       <div className="llaves-phase-nav">
         {phases.map((p, i) => (
@@ -2081,7 +2081,10 @@ export default function App() {
           {/* COUNTDOWN BANNER */}
           {activeTab !== "llaves" && <CountdownBanner />}
 
-          <div className="content" style={activeTab === "llaves" ? { padding: 0 } : {}}>
+          {/* LLAVES - fuera del content para sticky correcto */}
+          {activeTab === "llaves" && <LlavesTab matches={matches} />}
+
+          <div className="content" style={activeTab === "llaves" ? { display: "none" } : {}}>
 
             {/* PREDICTIONS */}
             {activeTab === "predictions" && (
@@ -2110,11 +2113,6 @@ export default function App() {
                     : finishedMatches.map(m => <MatchCard key={m.id} match={m} myPred={predictions[m.id]?.[currentUser?.id]} allPreds={predictions[m.id] || {}} onSave={savePrediction} isAdmin={isAdmin} isAdminPlayer={isAdminPlayer} onSetResult={setResult} participants={participants} scoring={scoring} />)
                 )}
               </div>
-            )}
-
-            {/* LLAVES */}
-            {activeTab === "llaves" && (
-              <LlavesTab matches={matches} />
             )}
 
             {/* GROUPS */}
