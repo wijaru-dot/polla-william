@@ -1832,7 +1832,11 @@ export default function App() {
     showNotif(`✅ ${added} amistosos cargados`);
   }
 
-  function deleteMatch(id) { remove(dbRef(db, `${tPath("matches")}/${id}`)); showNotif("Partido eliminado"); }
+  function deleteMatch(id) {
+    if (!window.confirm("¿Eliminar este partido? Esta acción no se puede deshacer.")) return;
+    remove(dbRef(db, `${tPath("matches")}/${id}`));
+    showNotif("Partido eliminado");
+  }
 
   function registerAdminAsPlayer() {
     if (!adminPlayerForm.name.trim()) return showNotif("Ingresa tu nombre");
