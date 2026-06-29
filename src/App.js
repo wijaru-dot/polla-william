@@ -179,29 +179,42 @@ function calcChampPoints(pred, winner, champPoints) {
 function computeStats(participantId, matches, predictions, champPredictions, tournamentWinner, scoring) {
   let total = 0, exact = 0, wins = 0, maxStreak = 0, tempStreak = 0;
   let groupsPts = 0, elimPts = 0, played = 0, noPred = 0, goalDiff = 0;
+  let groupsExact = 0, groupsWins = 0, groupsNoPred = 0, groupsGoalDiff = 0;
+  let elimExact = 0, elimWins = 0, elimNoPred = 0, elimGoalDiff = 0;
   const champPts = calcChampPoints(champPredictions?.[participantId]?.team, tournamentWinner, scoring?.champion);
   const finishedMatches = Object.values(matches || {}).filter(m => m.status === "finished").sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
   const totalMatches = finishedMatches.length;
+  const isGroups = m => m.phase === "groups" || m.phase === "test";
 
   finishedMatches.forEach(m => {
     const pred = predictions?.[m.id]?.[participantId];
     const pts = calcPoints(pred, m.result, scoring) ?? 0;
-    if (pred) {
-      played++;
-      goalDiff += Math.abs(parseInt(m.result.home) - parseInt(pred.home)) + Math.abs(parseInt(m.result.away) - parseInt(pred.away));
-    } else noPred++;
+    const gd = pred ? Math.abs(parseInt(m.result.home) - parseInt(pred.home)) + Math.abs(parseInt(m.result.away) - parseInt(pred.away)) : 0;
+    const isExact = pts >= (scoring?.exact || 3) + (scoring?.winner || 2);
+    const isWin = pts >= (scoring?.winner || 2);
+
+    if (pred) { played++; goalDiff += gd; } else noPred++;
     total += pts;
-    if (pts >= (scoring?.exact || 3) + (scoring?.winner || 2)) exact++;
-    if (pts >= (scoring?.winner || 2)) { wins++; tempStreak++; maxStreak = Math.max(maxStreak, tempStreak); }
-    else tempStreak = 0;
-    if (m.phase === "groups" || m.phase === "test") groupsPts += pts;
-    else elimPts += pts;
+    if (isExact) exact++;
+    if (isWin) { wins++; tempStreak++; maxStreak = Math.max(maxStreak, tempStreak); } else tempStreak = 0;
+
+    if (isGroups(m)) {
+      groupsPts += pts;
+      if (pred) { groupsGoalDiff += gd; } else groupsNoPred++;
+      if (isExact) groupsExact++;
+      if (isWin) groupsWins++;
+    } else {
+      elimPts += pts;
+      if (pred) { elimGoalDiff += gd; } else elimNoPred++;
+      if (isExact) elimExact++;
+      if (isWin) elimWins++;
+    }
   });
 
   total += champPts;
   const knockoutPoints = elimPts + champPts;
   const pct = played > 0 ? Math.round((wins / played) * 100) : 0;
-  return { total, exact, wins, groupsPts, elimPts, knockoutPoints, champPts, streak: maxStreak, pct, played, noPred, totalMatches, goalDiff };
+  return { total, exact, wins, groupsPts, elimPts, knockoutPoints, champPts, streak: maxStreak, pct, played, noPred, totalMatches, goalDiff, groupsExact, groupsWins, groupsNoPred, groupsGoalDiff, elimExact, elimWins, elimNoPred, elimGoalDiff };
 }
 
 // ── CSS ────────────────────────────────────────────────────────────────────────
@@ -1954,12 +1967,16 @@ export default function App() {
 
   const sortStandings = (list, tab) => {
     const getPts = p => tab === "groups" ? p.groupsPts : tab === "elim" ? p.knockoutPoints : p.total;
+    const getExact = p => tab === "groups" ? p.groupsExact : tab === "elim" ? p.elimExact : p.exact;
+    const getWins = p => tab === "groups" ? p.groupsWins : tab === "elim" ? p.elimWins : p.wins;
+    const getNoPred = p => tab === "groups" ? p.groupsNoPred : tab === "elim" ? p.elimNoPred : p.noPred;
+    const getGoalDiff = p => tab === "groups" ? p.groupsGoalDiff : tab === "elim" ? p.elimGoalDiff : p.goalDiff;
     return [...list].sort((a, b) =>
       getPts(b) - getPts(a) ||
-      b.exact - a.exact ||
-      b.wins - a.wins ||
-      a.noPred - b.noPred ||
-      a.goalDiff - b.goalDiff
+      getExact(b) - getExact(a) ||
+      getWins(b) - getWins(a) ||
+      getNoPred(a) - getNoPred(b) ||
+      getGoalDiff(a) - getGoalDiff(b)
     );
   };
 
