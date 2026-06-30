@@ -1157,18 +1157,28 @@ function LlavesTab({ matches }) {
 
   function MatchRow({ m, compact }) {
     const hasResult = m.status === "finished" && m.result;
+    const hasPens = hasResult && m.result.penalties;
+    const homeWins = hasResult && (
+      hasPens
+        ? parseInt(m.result.penalties.home) > parseInt(m.result.penalties.away)
+        : parseInt(m.result.home) > parseInt(m.result.away)
+    );
+    const awayWins = hasResult && !homeWins;
+    const homeStyle = hasResult ? { color: homeWins ? "var(--text)" : "var(--text3)", textDecoration: awayWins ? "line-through" : "none" } : {};
+    const awayStyle = hasResult ? { color: awayWins ? "var(--text)" : "var(--text3)", textDecoration: homeWins ? "line-through" : "none" } : {};
+
     if (compact) {
       return (
         <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 10px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, minWidth: 0 }}>
             <span style={{ fontSize: 12 }}>{TEAM_FLAGS[m.homeTeam] || "🏳️"}</span>
-            <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.homeTeam || "Por definir"}</span>
+            <span style={{ fontSize: 10, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", ...homeStyle }}>{m.homeTeam || "Por definir"}</span>
           </div>
           <span style={{ fontSize: 10, color: "var(--text3)", flexShrink: 0, padding: "0 4px" }}>
             {hasResult ? <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 14, color: "var(--gold)" }}>{m.result.home}-{m.result.away}</span> : "vs"}
           </span>
           <div style={{ display: "flex", alignItems: "center", gap: 4, flex: 1, minWidth: 0, justifyContent: "flex-end" }}>
-            <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.awayTeam || "Por definir"}</span>
+            <span style={{ fontSize: 10, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", ...awayStyle }}>{m.awayTeam || "Por definir"}</span>
             <span style={{ fontSize: 12 }}>{TEAM_FLAGS[m.awayTeam] || "🏳️"}</span>
           </div>
         </div>
@@ -1182,17 +1192,25 @@ function LlavesTab({ matches }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", padding: "10px 12px", gap: 8 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <span style={{ fontSize: 18 }}>{TEAM_FLAGS[m.homeTeam] || "🏳️"}</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{m.homeTeam || "Por definir"}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, ...homeStyle }}>{m.homeTeam || "Por definir"}</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-            {hasResult
-              ? <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: "var(--gold)" }}>{m.result.home}-{m.result.away}</span>
-              : <span style={{ fontSize: 11, color: "var(--text3)", textAlign: "center" }}>vs</span>
-            }
+            {hasResult ? (
+              <>
+                <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: "var(--gold)" }}>
+                  {hasPens && <span style={{ fontSize: 13, color: "var(--text3)" }}>({m.result.penalties.home}) </span>}
+                  {m.result.home}-{m.result.away}
+                  {hasPens && <span style={{ fontSize: 13, color: "var(--text3)" }}> ({m.result.penalties.away})</span>}
+                </span>
+                {hasPens && <span style={{ fontSize: 10, color: "var(--text3)" }}>pen</span>}
+              </>
+            ) : (
+              <span style={{ fontSize: 11, color: "var(--text3)", textAlign: "center" }}>vs</span>
+            )}
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
             <span style={{ fontSize: 18 }}>{TEAM_FLAGS[m.awayTeam] || "🏳️"}</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{m.awayTeam || "Por definir"}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, ...awayStyle }}>{m.awayTeam || "Por definir"}</span>
           </div>
         </div>
       </div>
