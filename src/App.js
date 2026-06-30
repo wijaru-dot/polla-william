@@ -1157,10 +1157,10 @@ function LlavesTab({ matches }) {
 
   function MatchRow({ m, compact }) {
     const hasResult = m.status === "finished" && m.result;
-    const hasPens = hasResult && m.result.penalties;
+    const hasPens = hasResult && m.result.penalties === true;
     const homeWins = hasResult && (
       hasPens
-        ? parseInt(m.result.penalties.home) > parseInt(m.result.penalties.away)
+        ? parseInt(m.result.pensHome) > parseInt(m.result.pensAway)
         : parseInt(m.result.home) > parseInt(m.result.away)
     );
     const awayWins = hasResult && !homeWins;
@@ -1198,9 +1198,9 @@ function LlavesTab({ matches }) {
             {hasResult ? (
               <>
                 <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: "var(--gold)" }}>
-                  {hasPens && <span style={{ fontSize: 13, color: "var(--text3)" }}>({m.result.penalties.home}) </span>}
+                  {hasPens && <span style={{ fontSize: 13, color: "var(--text3)" }}>({m.result.pensHome}) </span>}
                   {m.result.home}-{m.result.away}
-                  {hasPens && <span style={{ fontSize: 13, color: "var(--text3)" }}> ({m.result.penalties.away})</span>}
+                  {hasPens && <span style={{ fontSize: 13, color: "var(--text3)" }}> ({m.result.pensAway})</span>}
                 </span>
                 {hasPens && <span style={{ fontSize: 10, color: "var(--text3)" }}>pen</span>}
               </>
