@@ -214,7 +214,11 @@ function computeStats(participantId, matches, predictions, champPredictions, tou
   total += champPts;
   const knockoutPoints = elimPts + champPts;
   const pct = played > 0 ? Math.round((wins / played) * 100) : 0;
-  return { total, exact, wins, groupsPts, elimPts, knockoutPoints, champPts, streak: maxStreak, pct, played, noPred, totalMatches, goalDiff, groupsExact, groupsWins, groupsNoPred, groupsGoalDiff, elimExact, elimWins, elimNoPred, elimGoalDiff };
+  const groupsPlayed = Object.values(matches || {}).filter(m => (m.phase === "groups" || m.phase === "test") && m.status === "finished" && predictions?.[m.id]?.[participantId]).length;
+  const elimPlayed = Object.values(matches || {}).filter(m => m.phase !== "groups" && m.phase !== "test" && m.status === "finished" && predictions?.[m.id]?.[participantId]).length;
+  const groupsPct = groupsPlayed > 0 ? Math.round((groupsWins / groupsPlayed) * 100) : 0;
+  const elimPct = elimPlayed > 0 ? Math.round((elimWins / elimPlayed) * 100) : 0;
+  return { total, exact, wins, groupsPts, elimPts, knockoutPoints, champPts, streak: maxStreak, pct, played, noPred, totalMatches, goalDiff, groupsExact, groupsWins, groupsNoPred, groupsGoalDiff, elimExact, elimWins, elimNoPred, elimGoalDiff, groupsPct, elimPct };
 }
 
 // ── CSS ────────────────────────────────────────────────────────────────────────
@@ -2253,7 +2257,7 @@ export default function App() {
                             {p.name}
                             {!p.paidGroups && !p.paidElim && <span className="unpaid-badge">Sin pago</span>}
                           </div>
-                          <div className="standing-stats">🎯 {p.exact} exactos · ✅ {p.pct}% · 🔥 {p.streak} racha</div>
+                          <div className="standing-stats">🎯 {standTab === "groups" ? p.groupsExact : standTab === "elim" ? p.elimExact : p.exact} exactos · ✅ {standTab === "groups" ? p.groupsPct : standTab === "elim" ? p.elimPct : p.pct}% · 🔥 {p.streak} racha</div>
                         </div>
                         <div className="standing-pts">{pts}</div>
                       </div>
