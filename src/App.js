@@ -181,6 +181,8 @@ function computeStats(participantId, matches, predictions, champPredictions, tou
   let groupsPts = 0, elimPts = 0, played = 0, noPred = 0, goalDiff = 0;
   let groupsExact = 0, groupsWins = 0, groupsNoPred = 0, groupsGoalDiff = 0;
   let elimExact = 0, elimWins = 0, elimNoPred = 0, elimGoalDiff = 0;
+  let groupsMaxStreak = 0, groupsTempStreak = 0;
+  let elimMaxStreak = 0, elimTempStreak = 0;
   const champPts = calcChampPoints(champPredictions?.[participantId]?.team, tournamentWinner, scoring?.champion);
   const finishedMatches = Object.values(matches || {}).filter(m => m.status === "finished").sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
   const totalMatches = finishedMatches.length;
@@ -202,12 +204,12 @@ function computeStats(participantId, matches, predictions, champPredictions, tou
       groupsPts += pts;
       if (pred) { groupsGoalDiff += gd; } else groupsNoPred++;
       if (isExact) groupsExact++;
-      if (isWin) groupsWins++;
+      if (isWin) { groupsWins++; groupsTempStreak++; groupsMaxStreak = Math.max(groupsMaxStreak, groupsTempStreak); } else groupsTempStreak = 0;
     } else {
       elimPts += pts;
       if (pred) { elimGoalDiff += gd; } else elimNoPred++;
       if (isExact) elimExact++;
-      if (isWin) elimWins++;
+      if (isWin) { elimWins++; elimTempStreak++; elimMaxStreak = Math.max(elimMaxStreak, elimTempStreak); } else elimTempStreak = 0;
     }
   });
 
@@ -218,7 +220,7 @@ function computeStats(participantId, matches, predictions, champPredictions, tou
   const elimPlayed = Object.values(matches || {}).filter(m => m.phase !== "groups" && m.phase !== "test" && m.status === "finished" && predictions?.[m.id]?.[participantId]).length;
   const groupsPct = groupsPlayed > 0 ? Math.round((groupsWins / groupsPlayed) * 100) : 0;
   const elimPct = elimPlayed > 0 ? Math.round((elimWins / elimPlayed) * 100) : 0;
-  return { total, exact, wins, groupsPts, elimPts, knockoutPoints, champPts, streak: maxStreak, pct, played, noPred, totalMatches, goalDiff, groupsExact, groupsWins, groupsNoPred, groupsGoalDiff, elimExact, elimWins, elimNoPred, elimGoalDiff, groupsPct, elimPct };
+  return { total, exact, wins, groupsPts, elimPts, knockoutPoints, champPts, streak: maxStreak, pct, played, noPred, totalMatches, goalDiff, groupsExact, groupsWins, groupsNoPred, groupsGoalDiff, elimExact, elimWins, elimNoPred, elimGoalDiff, groupsPct, elimPct, groupsStreak: groupsMaxStreak, elimStreak: elimMaxStreak };
 }
 
 // ── CSS ────────────────────────────────────────────────────────────────────────
@@ -2257,7 +2259,7 @@ export default function App() {
                             {p.name}
                             {!p.paidGroups && !p.paidElim && <span className="unpaid-badge">Sin pago</span>}
                           </div>
-                          <div className="standing-stats">🎯 {standTab === "groups" ? p.groupsExact : standTab === "elim" ? p.elimExact : p.exact} exactos · ✅ {standTab === "groups" ? p.groupsPct : standTab === "elim" ? p.elimPct : p.pct}% · 🔥 {p.streak} racha</div>
+                          <div className="standing-stats">🎯 {standTab === "groups" ? p.groupsExact : standTab === "elim" ? p.elimExact : p.exact} exactos · ✅ {standTab === "groups" ? p.groupsPct : standTab === "elim" ? p.elimPct : p.pct}% · 🔥 {standTab === "groups" ? p.groupsStreak : standTab === "elim" ? p.elimStreak : p.streak} racha</div>
                         </div>
                         <div className="standing-pts">{pts}</div>
                       </div>
