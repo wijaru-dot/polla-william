@@ -923,7 +923,13 @@ function MatchCard({ match, myPred, onSave, isAdmin, isAdminPlayer, onSetResult,
               ) : (
                 <button className="btn btn-primary btn-full btn-sm" 
                   disabled={pred.predictPens && pred.pensHome === pred.pensAway}
-                  onClick={() => { onSave(match.id, pred); setEditing(false); }}>
+                  onClick={() => { 
+                    const predToSave = parseInt(pred.home) !== parseInt(pred.away) 
+                      ? { ...pred, predictPens: false, pensHome: null, pensAway: null } 
+                      : pred;
+                    onSave(match.id, predToSave); 
+                    setEditing(false); 
+                  }}>
                   💾 Guardar predicción
                 </button>
               )}
