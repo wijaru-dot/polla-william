@@ -874,8 +874,11 @@ function MatchCard({ match, myPred, onSave, isAdmin, isAdminPlayer, onSetResult,
             </div>
           )}
           {!editing && myPred && !locked && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 0" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "8px 0" }}>
               <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, color: "var(--green)", letterSpacing: 4 }}>{pred.home} – {pred.away}</span>
+              {pred.predictPens && pred.pensHome != null && pred.pensAway != null && (
+                <span style={{ fontSize: 12, color: "var(--text3)", marginTop: 2 }}>pen: {pred.pensHome} – {pred.pensAway}</span>
+              )}
             </div>
           )}
           {isKnockout && predDraw && !locked && (!myPred || editing) && (
