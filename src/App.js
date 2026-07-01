@@ -901,8 +901,8 @@ function MatchCard({ match, myPred, onSave, isAdmin, isAdminPlayer, onSetResult,
                   <Stepper value={pred.pensAway ?? 0} onChange={v => setPred(p => ({ ...p, pensAway: v }))} />
                 </div>
               )}
-              {pred.predictPens && pred.pensHome === 0 && pred.pensAway === 0 && (
-                <div className="warning-box" style={{ marginTop: 6, marginBottom: 0, fontSize: 11 }}>⚠️ El marcador de penales no puede ser 0-0</div>
+              {pred.predictPens && pred.pensHome === pred.pensAway && (
+                <div className="warning-box" style={{ marginTop: 6, marginBottom: 0, fontSize: 11 }}>⚠️ Los penales deben tener un ganador — no puede ser empate</div>
               )}
             </div>
           )}
@@ -922,7 +922,7 @@ function MatchCard({ match, myPred, onSave, isAdmin, isAdminPlayer, onSetResult,
                 </>
               ) : (
                 <button className="btn btn-primary btn-full btn-sm" 
-                  disabled={pred.predictPens && pred.pensHome === 0 && pred.pensAway === 0}
+                  disabled={pred.predictPens && pred.pensHome === pred.pensAway}
                   onClick={() => { onSave(match.id, pred); setEditing(false); }}>
                   💾 Guardar predicción
                 </button>
