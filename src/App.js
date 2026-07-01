@@ -878,7 +878,7 @@ function MatchCard({ match, myPred, onSave, isAdmin, isAdminPlayer, onSetResult,
               <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 36, color: "var(--green)", letterSpacing: 4 }}>{pred.home} – {pred.away}</span>
             </div>
           )}
-          {isKnockout && predDraw && !locked && (
+          {isKnockout && predDraw && !locked && (!myPred || editing) && (
             <div style={{ marginTop: 8, padding: 10, background: "rgba(255,23,68,0.05)", borderRadius: 8, border: "1px solid rgba(255,23,68,0.12)" }}>
               <div style={{ fontSize: 11, color: "var(--text3)", marginBottom: 6 }}>⚠️ Predices empate → ¿quieres predecir los penales?</div>
               <div style={{ display: "flex", gap: 8, marginBottom: pred.predictPens ? 8 : 0 }}>
