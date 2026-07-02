@@ -618,6 +618,9 @@ function RulesBox({ scoring, tournamentName }) {
       <div className="rules-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 6, marginTop: 4 }}>
         <span style={{ fontSize: 11, color: "var(--text3)" }}>En eliminatorias (empate → penales):</span>
       </div>
+      <div style={{ fontSize: 11, color: "var(--text3)", padding: "4px 0 6px", fontStyle: "italic" }}>
+        ℹ️ El marcador oficial incluye tiempo extra. Los puntos por empate solo aplican si el empate persiste al final del tiempo extra.
+      </div>
       <div className="rules-row"><span>🔄 Predijo empate + acertó ganador en penales</span><span className="rules-pts">+{s.wrongPenalty} pt</span></div>
       <div className="rules-row"><span>🎯 Bonus: marcador exacto de penales</span><span className="rules-pts">+{s.penalty} pts</span></div>
       <div className="rules-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 6, marginTop: 4 }}>
