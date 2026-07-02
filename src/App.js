@@ -798,6 +798,7 @@ function MatchCard({ match, myPred, onSave, isAdmin, isAdminPlayer, onSetResult,
   const [editing, setEditing] = useState(!myPred);
   const locked = isPastDeadline(match);
   const finished = match.status === "finished";
+  const started = locked && !finished; // partido bloqueado pero sin resultado aún
   const isKnockout = match.phase !== "groups" && match.phase !== "test";
   const predDraw = parseInt(pred.home) === parseInt(pred.away);
   const myPts = finished ? calcPoints(myPred, match.result, scoring) : null;
@@ -941,6 +942,26 @@ function MatchCard({ match, myPred, onSave, isAdmin, isAdminPlayer, onSetResult,
           {locked && !myPred && <div className="warning-box" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>⏰ Sin predicción — 0 puntos</div>}
           {locked && myPred && <div className="info-box" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>🔒 Predicción guardada · {myPred.home}-{myPred.away}{myPred.pensHome != null ? ` (pen: ${myPred.pensHome}-${myPred.pensAway})` : ""}</div>}
           {isAdmin && locked && <AdminSetResult match={match} onSetResult={onSetResult} />}
+        </div>
+      )}
+
+      {started && (
+        <div style={{ marginTop: 8 }}>
+          <button className="btn btn-secondary btn-sm btn-full" onClick={() => setExpanded(e => !e)}>
+            {expanded ? "▲ Ocultar" : "👁 Ver predicciones"}
+          </button>
+          {expanded && (
+            <div className="reveal-grid" style={{ marginTop: 8 }}>
+              {Object.entries(allPreds || {}).map(([uid, p]) => (
+                <div key={uid} className="reveal-item">
+                  <div className="reveal-name">{p.userName}</div>
+                  <div className="reveal-score">
+                    <span>{p.home}-{p.away}{p.pensHome != null ? ` (pen: ${p.pensHome}-${p.pensAway})` : ""}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
