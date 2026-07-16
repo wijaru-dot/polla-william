@@ -792,7 +792,7 @@ function StatsModal({ participant, stats, onClose, matches, predictions, scoring
 }
 
 // ── MATCH CARD ─────────────────────────────────────────────────────────────────
-function MatchCard({ match, myPred, onSave, isAdmin, isAdminPlayer, onSetResult, allPreds, participants, scoring }) {
+function MatchCard({ match, myPred, onSave, isAdmin, isAdminPlayer, onSetResult, allPreds, participants, scoring, champPredictions }) {
   const [pred, setPred] = useState(myPred || { home: 0, away: 0 });
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(!myPred);
@@ -962,6 +962,21 @@ function MatchCard({ match, myPred, onSave, isAdmin, isAdminPlayer, onSetResult,
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Predicciones del campeón visibles cuando arranca la final */}
+      {match.phase === "final" && locked && champPredictions && Object.keys(champPredictions).length > 0 && (
+        <div style={{ marginTop: 12, padding: "10px 12px", background: "rgba(255,215,0,0.06)", borderRadius: 10, border: "1px solid rgba(255,215,0,0.2)" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gold)", marginBottom: 8, textAlign: "center" }}>🏆 Predicciones del campeón</div>
+          <div className="reveal-grid">
+            {Object.entries(champPredictions).map(([uid, p]) => (
+              <div key={uid} className="reveal-item">
+                <div className="reveal-name">{p.userName}</div>
+                <div className="reveal-score">{TEAM_FLAGS[p.team] || "🏳️"} {p.team}</div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -2183,7 +2198,7 @@ export default function App() {
                 {predTab === "upcoming" && (
                   upcomingMatches.length === 0
                     ? <div className="empty"><div className="empty-icon">⚽</div><div className="empty-text">No hay partidos próximos</div></div>
-                    : upcomingMatches.map(m => <MatchCard key={m.id} match={m} myPred={predictions[m.id]?.[currentUser?.id]} allPreds={predictions[m.id] || {}} onSave={savePrediction} isAdmin={isAdmin} isAdminPlayer={isAdminPlayer} onSetResult={setResult} participants={participants} scoring={scoring} />)
+                    : upcomingMatches.map(m => <MatchCard key={m.id} match={m} myPred={predictions[m.id]?.[currentUser?.id]} allPreds={predictions[m.id] || {}} onSave={savePrediction} isAdmin={isAdmin} isAdminPlayer={isAdminPlayer} onSetResult={setResult} participants={participants} scoring={scoring} champPredictions={champPredictions} />)
                 )}
                 {predTab === "finished" && (
                   finishedMatches.length === 0
